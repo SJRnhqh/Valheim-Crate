@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  valheim:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: valheim-server
+    ports:
+      - "2456-2457:2456-2457/udp"
+    environment:
+      # Required - See README.md for detailed configuration / 必填 - 详细配置请查看 README.md
+      SERVER_NAME: "Your Server Name"
+      SERVER_PASSWORD: "YourPassword"
+      
+      # Optional settings - See README.md for details / 可选设置 - 详情见 README.md
+      # SERVER_PORT: 2456
+      # SERVER_WORLD: "Dedicated"
+      # SERVER_PUBLIC: 1
+      # SERVER_SAVE_DIR: "/valheim/saves"
+      # SERVER_LOGFILE: "/valheim/log.txt"
+      # SERVER_SEED: "your-seed-here"
+      # SERVER_PRESET: "hard"
+      # SERVER_MODIFIER: "raids:none,combat:hard"
+      # SERVER_SETKEY: "nomap,nobuildcost"
+      # SERVER_SAVEINTERVAL: 1800
+      # SERVER_BACKUPS: 4
+      # SERVER_BACKUPSHORT: 7200
+      # SERVER_BACKUPLONG: 43200
+      # SERVER_CROSSPLAY: 1
+      # SERVER_INSTANCEID: "1"
+
+    volumes:
+      # 游戏数据持久化（只挂载数据目录，不覆盖脚本）/ Game data persistence (only mount data dir, don't override scripts)
+      - /opt/server/valheim:/valheim
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+
