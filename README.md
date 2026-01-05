@@ -1,5 +1,9 @@
 # Valheim-Crate
 
+<div align="center">
+  <img src="image/Valheim-Crate.png" alt="Valheim-Crate" width="400">
+</div>
+
 🐳 **Valheim dedicated server in Docker** — Zero setup, runs on Linux.
 
 [中文文档 / Chinese Documentation](README.zh.md)
@@ -122,41 +126,23 @@ docker-compose exec valheim cat /valheim/log.txt  # Server logs (if configured)
 
 ## Troubleshooting
 
-**Server won't start:**
-- Check: `./server.sh status`
-- View logs: `docker-compose logs valheim`
-- Verify: `SERVER_NAME` and `SERVER_PASSWORD` are set
+- **Server won't start:** Check `./server.sh status` and verify `SERVER_NAME`/`SERVER_PASSWORD` are set
+- **Server files not found:** Run `./server.sh install`
+- **Port conflict:** Change ports in `docker-compose.yml`
+- **Update failed:** Run `./server.sh start && ./server.sh update`
 
-**Server files not found:**
-```bash
-./server.sh install
+## Project Structure
+
 ```
-
-**Port conflict:**
-Change ports in `docker-compose.yml` and update `SERVER_PORT`.
-
-**Update failed:**
-```bash
-./server.sh start && ./server.sh update
+📦 Valheim-Crate/
+├── 🐳 Dockerfile                 # Docker image definition
+├── 📝 docker-compose.example.yml  # Example configuration (copy to docker-compose.yml)
+├── 🚫 docker-compose.yml          # Your local config (gitignored)
+├── 🎮 server.sh                   # Main management script
+├── 📚 README.md                   # English documentation
+├── 📚 README.zh.md                # Chinese documentation
+├── 🚫 .gitignore                  # Git ignore rules
+└── 📁 scripts/
+    ├── ⚙️  setup.sh               # Install/update server files
+    └── 🚀 start.sh                # Start Valheim server
 ```
-
-## FAQ
-
-**Q: Change settings?**  
-A: Edit `docker-compose.yml`, then `./server.sh restart`
-
-**Q: World lost after remove?**  
-A: No, data in `/opt/server/valheim` persists
-
-**Q: Update server?**  
-A: `./server.sh update`
-
-**Q: Custom seed?**  
-A: Set `SERVER_SEED: "your-seed"`
-
-**Q: Enable crossplay?**  
-A: Set `SERVER_CROSSPLAY: 1`
-
-## License
-
-This project is provided as-is for running Valheim dedicated servers.

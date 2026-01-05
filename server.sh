@@ -108,7 +108,7 @@ install_server() {
     echo -e "${YELLOW}   This may take several minutes, please wait...${NC}"
     echo -e "${YELLOW}   这可能需要几分钟时间，请耐心等待...${NC}"
     
-    if ! docker-compose exec -T valheim /app/cmd/setup.sh; then
+    if ! docker-compose exec -T valheim /app/scripts/setup.sh; then
         echo -e "${RED}❌ Server installation failed${NC}"
         echo -e "${RED}   服务器安装失败${NC}"
         echo -e "${YELLOW}   View logs: docker-compose logs valheim${NC}"
@@ -123,7 +123,7 @@ install_server() {
     # Step 3: Start server after installation / 步骤 3: 安装完成后启动服务器
     echo -e "${YELLOW}🎮 Starting Valheim server...${NC}"
     echo -e "${YELLOW}   正在启动 Valheim 服务器...${NC}"
-    docker-compose exec -d valheim /app/cmd/start.sh
+    docker-compose exec -d valheim /app/scripts/start.sh
     sleep 2
     
     if docker-compose exec -T valheim pgrep -f "valheim_server.x86_64" > /dev/null 2>&1; then
@@ -173,7 +173,7 @@ update_server() {
     echo -e "${YELLOW}   This may take several minutes, please wait...${NC}"
     echo -e "${YELLOW}   这可能需要几分钟时间，请耐心等待...${NC}"
     
-    if ! docker-compose exec -T valheim /app/cmd/setup.sh; then
+    if ! docker-compose exec -T valheim /app/scripts/setup.sh; then
         echo -e "${RED}❌ Server update failed${NC}"
         echo -e "${RED}   服务器更新失败${NC}"
         echo -e "${YELLOW}   View logs: docker-compose logs valheim${NC}"
@@ -253,7 +253,7 @@ start_server() {
         echo -e "${BLUE}🚀 Launching server process...${NC}"
         echo -e "${BLUE}   正在启动服务器进程...${NC}"
         
-        if ! docker-compose exec -d valheim /app/cmd/start.sh; then
+        if ! docker-compose exec -d valheim /app/scripts/start.sh; then
             echo -e "${RED}❌ Failed to start server process${NC}"
             echo -e "${RED}   启动服务器进程失败${NC}"
             echo -e "${YELLOW}   View logs: docker-compose logs valheim${NC}"

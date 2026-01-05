@@ -1,5 +1,9 @@
 # Valheim-Crate
 
+<div align="center">
+  <img src="image/Valheim-Crate.png" alt="Valheim-Crate" width="400">
+</div>
+
 🐳 **基于 Docker 的 Valheim 专用服务器** — 零配置，在 Linux 上运行。
 
 [English Documentation](README.md)
@@ -122,41 +126,25 @@ docker-compose exec valheim cat /valheim/log.txt  # 服务器日志（如果配�
 
 ## 故障排除
 
-**服务器无法启动：**
-- 检查：`./server.sh status`
-- 查看日志：`docker-compose logs valheim`
-- 验证：`SERVER_NAME` 和 `SERVER_PASSWORD` 已设置
+- **服务器无法启动：** 检查 `./server.sh status` 并验证 `SERVER_NAME`/`SERVER_PASSWORD` 已设置
+- **服务器文件未找到：** 运行 `./server.sh install`
+- **端口冲突：** 在 `docker-compose.yml` 中更改端口
+- **更新失败：** 运行 `./server.sh start && ./server.sh update`
 
-**服务器文件未找到：**
-```bash
-./server.sh install
+## 项目结构
+
 ```
-
-**端口冲突：**
-在 `docker-compose.yml` 中更改端口并更新 `SERVER_PORT`。
-
-**更新失败：**
-```bash
-./server.sh start && ./server.sh update
+📦 Valheim-Crate/
+├── 🐳 Dockerfile                 # Docker 镜像定义
+├── 📝 docker-compose.example.yml  # 示例配置文件（复制为 docker-compose.yml）
+├── 🚫 docker-compose.yml          # 您的本地配置（已 gitignore）
+├── 🎮 server.sh                   # 主管理脚本
+├── 📚 README.md                   # 英文文档
+├── 📚 README.zh.md                # 中文文档
+├── 🚫 .gitignore                  # Git 忽略规则
+└── 📁 scripts/
+    ├── ⚙️  setup.sh               # 安装/更新服务器文件
+    └── 🚀 start.sh                # 启动 Valheim 服务器
 ```
-
-## 常见问题
-
-**Q: 如何更改设置？**  
-A: 编辑 `docker-compose.yml`，然后 `./server.sh restart`
-
-**Q: 删除后世界会丢失吗？**  
-A: 不会，数据在 `/opt/server/valheim` 中保留
-
-**Q: 如何更新服务器？**  
-A: `./server.sh update`
-
-**Q: 可以使用自定义种子吗？**  
-A: 设置 `SERVER_SEED: "your-seed"`
-
-**Q: 如何启用跨平台？**  
-A: 设置 `SERVER_CROSSPLAY: 1`
-
-## 许可证
 
 本项目按原样提供，用于运行 Valheim 专用服务器。

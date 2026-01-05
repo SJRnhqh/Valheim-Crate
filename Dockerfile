@@ -5,9 +5,9 @@ FROM steamcmd/steamcmd:latest
 WORKDIR /valheim
 
 # Create app directory for scripts (不会被挂载覆盖) / 创建 app 目录存放脚本（不会被挂载覆盖）
-RUN mkdir -p /app/cmd
-COPY cmd/ /app/cmd/
-RUN chmod +x /app/cmd/*.sh
+RUN mkdir -p /app/scripts
+COPY scripts/ /app/scripts/
+RUN chmod +x /app/scripts/*.sh
 
 # Expose Valheim server ports (UDP) / 暴露 Valheim 服务器端口（UDP）
 EXPOSE 2456-2457/udp
