@@ -87,6 +87,7 @@ SERVER_PRESET: "hard"  # Normal, Casual, Easy, Hard, Hardcore, Immersive, Hammer
 SERVER_MODIFIER: "raids:none,combat:hard,resources:more"
 ```
 | 可用 | 值 |
+|-----|------|
 | combat | veryeasy, easy, hard, veryhard |
 | deathpenalty | casual, veryeasy, easy, hard, hardcore |
 | resources | muchless, less, more, muchmore, most |

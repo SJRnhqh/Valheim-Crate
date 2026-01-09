@@ -87,6 +87,7 @@ Default: Normal (if nothing set)
 SERVER_MODIFIER: "raids:none,combat:hard,resources:more"
 ```
 | Available | Value |
+|-----|------|
 | combat | veryeasy, easy, hard, veryhard |
 | deathpenalty | casual, veryeasy, easy, hard, hardcore |
 | resources | muchless, less, more, muchmore, most |
