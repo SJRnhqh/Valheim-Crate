@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 )
 
-// read7BitEncodedInt 读取 .NET 格式的可变长度整数
 func read7BitEncodedInt(r *bytes.Reader) (int, error) {
 	count := 0
 	shift := 0
@@ -27,7 +26,6 @@ func read7BitEncodedInt(r *bytes.Reader) (int, error) {
 	return count, nil
 }
 
-// write7BitEncodedInt 写入 .NET 格式的可变长度整数
 func write7BitEncodedInt(w *bytes.Buffer, value int) {
 	v := uint32(value)
 	for v >= 0x80 {
@@ -37,7 +35,6 @@ func write7BitEncodedInt(w *bytes.Buffer, value int) {
 	w.WriteByte(byte(v))
 }
 
-// getDotNetHashCode 模拟 Unity/Mono 的 string.GetHashCode()
 func getDotNetHashCode(s string) int32 {
 	var hash int32
 	for _, c := range s {
@@ -60,113 +57,121 @@ func main() {
 	dbPath := filepath.Join(saveDir, "worlds_local", worldName+".db")
 
 	if _, err := os.Stat(fwlPath); os.IsNotExist(err) {
-		fmt.Printf("[Patcher] No existing world file found at %s. Skipping.\n", fwlPath)
+		fmt.Printf("[Patcher] File not found: %s. Skipping.\n", fwlPath)
 		return
 	}
-
-	fmt.Printf("[Patcher] Inspecting world: %s\n", worldName)
 
 	data, err := os.ReadFile(fwlPath)
 	if err != nil {
-		fmt.Printf("[Patcher] Error reading file: %v\n", err)
-		os.Exit(1)
+		panic(err)
 	}
 	reader := bytes.NewReader(data)
 
-	// 1. 读取版本号 [Int32]
+	// 1. Version
 	var version int32
-	if err := binary.Read(reader, binary.LittleEndian, &version); err != nil {
-		fmt.Println("[Patcher] Failed to read version")
-		os.Exit(1)
-	}
+	binary.Read(reader, binary.LittleEndian, &version)
+
+	// 2. Padding (Skip 4 bytes, based on your previous logs)
+	reader.Seek(4, io.SeekCurrent)
+
+	// 3. World Name
+	nameLen, _ := read7BitEncodedInt(reader)
+	reader.Seek(int64(nameLen), io.SeekCurrent)
+
+	// 4. Current Seed String
+	// 记录种子字符串之前的头部数据，用于后续重写
+	headerSize := len(data) - reader.Len()
+	
+	oldSeedLen, _ := read7BitEncodedInt(reader)
+	oldSeedBytes := make([]byte, oldSeedLen)
+	reader.Read(oldSeedBytes)
+	currentSeed := string(oldSeedBytes)
+
+	fmt.Printf("[Patcher] Found Current Seed: [%s]\n", currentSeed)
 
 	// ========================================================
-	// ⚠️ 修复点：跳过 header 中的额外 4 字节 (Int32)
-	// 根据你的 hexdump，版本号之后紧跟一个 Int32 (36)
+	// 🧠 智能定位 Hash 逻辑
+	// 不假设 Hash 在哪里，而是根据旧种子算出来的 Hash 去“寻找”它
 	// ========================================================
-	if _, err := reader.Seek(4, io.SeekCurrent); err != nil {
-		fmt.Println("[Patcher] Failed to skip header padding")
-		os.Exit(1)
-	}
-
-	// 2. 读取世界名长度 [7-bit Int]
-	nameLen, err := read7BitEncodedInt(reader)
-	if err != nil {
-		fmt.Println("[Patcher] Failed to read name length")
-		os.Exit(1)
-	}
 	
-	// 3. 跳过世界名
-	if _, err := reader.Seek(int64(nameLen), io.SeekCurrent); err != nil {
-		fmt.Println("[Patcher] Failed to skip world name")
-		os.Exit(1)
-	}
+	// 1. 计算旧种子的预期 Hash
+	expectedOldHash := getDotNetHashCode(currentSeed)
+	fmt.Printf("[Patcher] Expected Old Hash: %d (Scanning to find this...)\n", expectedOldHash)
 
-	// 4. [String SeedName] -> 这里是我们定位的种子起点
-	seedStartOffset := len(data) - reader.Len()
+	// 2. 向后扫描寻找这个 Hash
+	var gapData []byte
+	foundHash := false
 	
-	currentSeedLen, err := read7BitEncodedInt(reader)
-	if err != nil {
-		fmt.Println("[Patcher] Failed to read seed length")
-		os.Exit(1)
-	}
-	
-	currentSeedBytes := make([]byte, currentSeedLen)
-	if _, err := reader.Read(currentSeedBytes); err != nil {
-		fmt.Println("[Patcher] Failed to read seed string")
-		os.Exit(1)
-	}
-	currentSeed := string(currentSeedBytes)
+	// 最多向后找 128 字节 (足够容纳 UID 和其他可能的 padding)
+	for i := 0; i < 128; i++ {
+		// 记录当前位置
+		currentPos, _ := reader.Seek(0, io.SeekCurrent)
+		
+		// 尝试读 4 字节
+		var candidateHash int32
+		err := binary.Read(reader, binary.LittleEndian, &candidateHash)
+		
+		// 如果读到了末尾，停止
+		if err != nil {
+			break
+		}
 
-	fmt.Printf("[Patcher] Current Seed: [%s] | Target Seed: [%s]\n", currentSeed, targetSeed)
+		// 检查是否匹配
+		if candidateHash == expectedOldHash {
+			foundHash = true
+			fmt.Printf("[Patcher] ✅ Found Hash at relative offset +%d bytes!\n", i)
+			break
+		}
 
-	if currentSeed == targetSeed {
-		fmt.Println("[Patcher] ✅ Seed matches. No changes needed.")
-		return
+		// 如果不匹配，回退 3 个字节 (前进 1 个字节继续扫)
+		// 并把这 1 个字节加入到 gapData
+		reader.Seek(currentPos, io.SeekStart)
+		b, _ := reader.ReadByte()
+		gapData = append(gapData, b)
 	}
 
-	fmt.Println("[Patcher] ⚠️  Seed MISMATCH! Patching FWL and resetting DB...")
-
-	// 5. 跳过旧 Hash (4 字节)
-	if _, err := reader.Seek(4, io.SeekCurrent); err != nil {
-		fmt.Println("[Patcher] Failed to skip old hash")
-		os.Exit(1)
+	if !foundHash {
+		fmt.Println("[Patcher] ❌ FATAL: Could not locate old Hash in file! File structure unknown.")
+		// 这种情况下最好不要强行修改，以免坏档
+		return 
 	}
+
+	// 此时 reader 正好停在 Old Hash 之后
 	restData, _ := io.ReadAll(reader)
 
-	// 6. 重组文件
+	// ========================================================
+	// 重组文件
+	// ========================================================
 	newBuf := new(bytes.Buffer)
-	
-	// A. 写入头部 (Version + Padding + WorldNameLength + WorldName)
-	newBuf.Write(data[:seedStartOffset])
 
-	// B. 写入新种子
+	// A. Header (Version + Name)
+	newBuf.Write(data[:headerSize])
+
+	// B. New Seed String
 	write7BitEncodedInt(newBuf, len(targetSeed))
 	newBuf.WriteString(targetSeed)
 
-	// C. 写入新 Hash
-	newHash := getDotNetHashCode(targetSeed)
-	if err := binary.Write(newBuf, binary.LittleEndian, newHash); err != nil {
-		panic(err)
+	// C. Gap Data (UID/Padding, preserved exactly as is)
+	if len(gapData) > 0 {
+		newBuf.Write(gapData)
+		fmt.Printf("[Patcher] Preserving %d bytes of gap data (UID?)\n", len(gapData))
 	}
-	fmt.Printf("[Patcher] New Hash Calculated: %d (0x%X)\n", newHash, newHash)
 
-	// D. 写入剩余数据
+	// D. New Hash
+	newHash := getDotNetHashCode(targetSeed)
+	binary.Write(newBuf, binary.LittleEndian, newHash)
+	fmt.Printf("[Patcher] Writing New Hash: %d\n", newHash)
+
+	// E. Rest of file
 	newBuf.Write(restData)
 
-	if err := os.WriteFile(fwlPath, newBuf.Bytes(), 0644); err != nil {
-		panic(err)
-	}
-	fmt.Println("[Patcher] ✅ FWL file updated successfully.")
+	// Save
+	os.WriteFile(fwlPath, newBuf.Bytes(), 0644)
+	fmt.Println("[Patcher] FWL patched successfully.")
 
+	// Delete DB
 	if _, err := os.Stat(dbPath); err == nil {
-		if err := os.Remove(dbPath); err != nil {
-			fmt.Printf("[Patcher] ❌ Error deleting DB file: %v\n", err)
-			os.Exit(1)
-		} else {
-			fmt.Println("[Patcher] ♻️  Old DB file deleted. World will regenerate on startup.")
-		}
-	} else {
-		fmt.Println("[Patcher] DB file not found, skipping deletion.")
+		os.Remove(dbPath)
+		fmt.Println("[Patcher] ♻️  DB Deleted. Server will regenerate correct map.")
 	}
 }
