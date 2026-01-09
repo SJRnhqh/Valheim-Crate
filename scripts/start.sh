@@ -144,6 +144,32 @@ export LD_LIBRARY_PATH=/valheim/linux64:$LD_LIBRARY_PATH
 # 注意：892970 是运行时 App ID（来自官方脚本），896660 是 SteamCMD 下载专用服务器的 App ID
 export SteamAppId=892970
 
+# ==============================================================================
+# Auto-Patcher Logic (Go Implementation) / 自动补丁逻辑 (Go 实现)
+# ==============================================================================
+# Check if SERVER_SEED is set / 检查是否设置了种子环境变量
+if [ -n "$SERVER_SEED" ]; then
+    echo "⚙️  Running Valheim Seed Patcher..."
+    echo "   正在运行种子修补工具..."
+    
+    # Call the compiled Go tool / 调用编译好的 Go 工具
+    # Args: <WorldName> <SaveDir> <TargetSeed>
+    /app/scripts/valheim_seed "$SERVER_WORLD" "$SERVER_SAVE_DIR" "$SERVER_SEED"
+    
+    EXIT_CODE=$?
+    if [ $EXIT_CODE -ne 0 ]; then
+        echo "⚠️  Patcher warning: Tool exited with code $EXIT_CODE"
+        echo "   补丁工具警告：工具退出代码 $EXIT_CODE"
+    fi
+else
+    echo "ℹ️  No SERVER_SEED set. Skipping patcher."
+    echo "   未设置 SERVER_SEED。跳过修补工具。"
+fi
+# ==============================================================================
+
+echo "🚀 Executing Valheim Server binary..."
+echo "   正在执行 Valheim 服务器程序..."
+
 # Start Valheim server (foreground) / 启动 Valheim 服务器（前台运行）
 exec /valheim/valheim_server.x86_64 "${SERVER_ARGS[@]}"
 

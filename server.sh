@@ -59,7 +59,7 @@ check_docker() {
     fi
 
     # Check if Docker Compose is installed / 检查 Docker Compose 是否安装
-    if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
+    if ! command -v docker compose &> /dev/null && ! docker compose version &> /dev/null; then
         echo -e "${RED}❌ Docker Compose is not installed. Please install Docker Compose first.${NC}"
         echo -e "${RED}   Docker Compose 未安装，请先安装 Docker Compose${NC}"
         echo -e "${YELLOW}   Installation guide: https://docs.docker.com/compose/install/${NC}"
@@ -83,7 +83,7 @@ install_server() {
     # Step 1: Build and start container / 步骤 1: 构建并启动容器
     echo -e "${YELLOW}📦 Step 1/3: Building Docker image and starting container...${NC}"
     echo -e "${YELLOW}   步骤 1/3: 构建 Docker 镜像并启动容器...${NC}"
-    docker-compose up -d --build --force-recreate valheim
+    docker compose up -d --build --force-recreate valheim
 
     # Wait for container to fully start / 等待容器完全启动
     echo -e "${YELLOW}⏳ Waiting for container to start...${NC}"
@@ -91,10 +91,10 @@ install_server() {
     sleep 3
 
     # Check if container is running / 检查容器是否运行
-    if ! docker-compose ps | grep -q "Up"; then
+    if ! docker compose ps | grep -q "Up"; then
         echo -e "${RED}❌ Container failed to start${NC}"
         echo -e "${RED}   容器启动失败${NC}"
-        docker-compose logs
+        docker compose logs
         exit 1
     fi
 
@@ -108,11 +108,11 @@ install_server() {
     echo -e "${YELLOW}   This may take several minutes, please wait...${NC}"
     echo -e "${YELLOW}   这可能需要几分钟时间，请耐心等待...${NC}"
     
-    if ! docker-compose exec -T valheim /app/scripts/setup.sh; then
+    if ! docker compose exec -T valheim /app/scripts/setup.sh; then
         echo -e "${RED}❌ Server installation failed${NC}"
         echo -e "${RED}   服务器安装失败${NC}"
-        echo -e "${YELLOW}   View logs: docker-compose logs valheim${NC}"
-        echo -e "${YELLOW}   查看日志: docker-compose logs valheim${NC}"
+        echo -e "${YELLOW}   View logs: docker compose logs valheim${NC}"
+        echo -e "${YELLOW}   查看日志: docker compose logs valheim${NC}"
         exit 1
     fi
 
@@ -123,10 +123,10 @@ install_server() {
     # Step 3: Start server after installation / 步骤 3: 安装完成后启动服务器
     echo -e "${YELLOW}🎮 Starting Valheim server...${NC}"
     echo -e "${YELLOW}   正在启动 Valheim 服务器...${NC}"
-    docker-compose exec -d valheim /app/scripts/start.sh
+    docker compose exec -d valheim /app/scripts/start.sh
     sleep 2
     
-    if docker-compose exec -T valheim pgrep -f "valheim_server.x86_64" > /dev/null 2>&1; then
+    if docker compose exec -T valheim pgrep -f "valheim_server.x86_64" > /dev/null 2>&1; then
         echo -e "${GREEN}✅ Valheim server started successfully${NC}"
         echo -e "${GREEN}   Valheim 服务器已成功启动${NC}"
     else
@@ -153,17 +153,17 @@ update_server() {
 
     # Check if server was previously installed / 检查服务器是否已安装
     # Check if container exists or server files exist / 检查容器是否存在或服务器文件是否存在
-    if ! docker-compose ps | grep -q "valheim-server" && [ ! -f "/opt/server/valheim/valheim_server.x86_64" ]; then
+    if ! docker compose ps | grep -q "valheim-server" && [ ! -f "/opt/server/valheim/valheim_server.x86_64" ]; then
         echo -e "${RED}❌ Server not installed. Please run './server.sh install' first${NC}"
         echo -e "${RED}   服务器未安装。请先运行 './server.sh install'${NC}"
         exit 1
     fi
 
     # Start container if not running / 如果容器未运行则启动
-    if ! docker-compose ps valheim | grep -q "Up"; then
+    if ! docker compose ps valheim | grep -q "Up"; then
         echo -e "${YELLOW}📦 Starting container...${NC}"
         echo -e "${YELLOW}   正在启动容器...${NC}"
-        docker-compose up -d valheim
+        docker compose up -d valheim
         sleep 3
     fi
 
@@ -173,11 +173,11 @@ update_server() {
     echo -e "${YELLOW}   This may take several minutes, please wait...${NC}"
     echo -e "${YELLOW}   这可能需要几分钟时间，请耐心等待...${NC}"
     
-    if ! docker-compose exec -T valheim /app/scripts/setup.sh; then
+    if ! docker compose exec -T valheim /app/scripts/setup.sh; then
         echo -e "${RED}❌ Server update failed${NC}"
         echo -e "${RED}   服务器更新失败${NC}"
-        echo -e "${YELLOW}   View logs: docker-compose logs valheim${NC}"
-        echo -e "${YELLOW}   查看日志: docker-compose logs valheim${NC}"
+        echo -e "${YELLOW}   View logs: docker compose logs valheim${NC}"
+        echo -e "${YELLOW}   查看日志: docker compose logs valheim${NC}"
         exit 1
     fi
 
@@ -203,7 +203,7 @@ start_server() {
     echo ""
 
     # Check if container exists / 检查容器是否存在
-    if ! docker-compose ps | grep -q "valheim-server"; then
+    if ! docker compose ps | grep -q "valheim-server"; then
         echo -e "${YELLOW}⚠️  Container not found, installing server first...${NC}"
         echo -e "${YELLOW}   未找到容器，先安装服务器...${NC}"
         install_server
@@ -211,15 +211,15 @@ start_server() {
     fi
 
     # Start container if not running / 如果容器未运行则启动
-    if ! docker-compose ps valheim | grep -q "Up"; then
+    if ! docker compose ps valheim | grep -q "Up"; then
         echo -e "${YELLOW}📦 Starting container...${NC}"
         echo -e "${YELLOW}   正在启动容器...${NC}"
-        docker-compose up -d valheim
+        docker compose up -d valheim
         sleep 3
     fi
 
     # Check if server files exist / 检查服务器文件是否存在
-    if ! docker-compose exec -T valheim test -f /valheim/valheim_server.x86_64 2>/dev/null; then
+    if ! docker compose exec -T valheim test -f /valheim/valheim_server.x86_64 2>/dev/null; then
         echo -e "${RED}❌ Server files not found. Please run './server.sh install' first${NC}"
         echo -e "${RED}   未找到服务器文件。请先运行 './server.sh install'${NC}"
         exit 1
@@ -230,10 +230,10 @@ start_server() {
     echo -e "${YELLOW}   正在启动 Valheim 服务器...${NC}"
     
     # Check if server is already running / 检查服务器是否已在运行
-    if docker-compose exec -T valheim pgrep -f "valheim_server.x86_64" > /dev/null 2>&1; then
+    if docker compose exec -T valheim pgrep -f "valheim_server.x86_64" > /dev/null 2>&1; then
         echo -e "${YELLOW}ℹ️  Server is already running${NC}"
         echo -e "${YELLOW}   服务器已在运行${NC}"
-        SERVER_PID=$(docker-compose exec -T valheim pgrep -f "valheim_server.x86_64" | head -1)
+        SERVER_PID=$(docker compose exec -T valheim pgrep -f "valheim_server.x86_64" | head -1)
         echo -e "${GREEN}   Server PID: $SERVER_PID / 服务器进程 ID: $SERVER_PID${NC}"
     else
         # Check required configuration / 检查必填配置
@@ -241,11 +241,11 @@ start_server() {
         echo -e "${BLUE}   正在检查服务器配置...${NC}"
         
         # Verify required environment variables / 验证必填环境变量
-        if ! docker-compose exec -T valheim bash -c '[ -n "$SERVER_NAME" ] && [ -n "$SERVER_PASSWORD" ]' 2>/dev/null; then
+        if ! docker compose exec -T valheim bash -c '[ -n "$SERVER_NAME" ] && [ -n "$SERVER_PASSWORD" ]' 2>/dev/null; then
             echo -e "${RED}❌ Missing required configuration (SERVER_NAME or SERVER_PASSWORD)${NC}"
             echo -e "${RED}   缺少必填配置（SERVER_NAME 或 SERVER_PASSWORD）${NC}"
-            echo -e "${YELLOW}   Please edit docker-compose.yml and set SERVER_NAME and SERVER_PASSWORD${NC}"
-            echo -e "${YELLOW}   请编辑 docker-compose.yml 并设置 SERVER_NAME 和 SERVER_PASSWORD${NC}"
+            echo -e "${YELLOW}   Please edit docker compose.yml and set SERVER_NAME and SERVER_PASSWORD${NC}"
+            echo -e "${YELLOW}   请编辑 docker compose.yml 并设置 SERVER_NAME 和 SERVER_PASSWORD${NC}"
             exit 1
         fi
         
@@ -253,11 +253,11 @@ start_server() {
         echo -e "${BLUE}🚀 Launching server process...${NC}"
         echo -e "${BLUE}   正在启动服务器进程...${NC}"
         
-        if ! docker-compose exec -d valheim /app/scripts/start.sh; then
+        if ! docker compose exec -d valheim /app/scripts/start.sh; then
             echo -e "${RED}❌ Failed to start server process${NC}"
             echo -e "${RED}   启动服务器进程失败${NC}"
-            echo -e "${YELLOW}   View logs: docker-compose logs valheim${NC}"
-            echo -e "${YELLOW}   查看日志: docker-compose logs valheim${NC}"
+            echo -e "${YELLOW}   View logs: docker compose logs valheim${NC}"
+            echo -e "${YELLOW}   查看日志: docker compose logs valheim${NC}"
             exit 1
         fi
         
@@ -271,7 +271,7 @@ start_server() {
         
         while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
             sleep 2
-            if docker-compose exec -T valheim pgrep -f "valheim_server.x86_64" > /dev/null 2>&1; then
+            if docker compose exec -T valheim pgrep -f "valheim_server.x86_64" > /dev/null 2>&1; then
                 SERVER_STARTED=true
                 break
             fi
@@ -281,7 +281,7 @@ start_server() {
         
         # Check if server started successfully / 检查服务器是否成功启动
         if [ "$SERVER_STARTED" = true ]; then
-            SERVER_PID=$(docker-compose exec -T valheim pgrep -f "valheim_server.x86_64" | head -1)
+            SERVER_PID=$(docker compose exec -T valheim pgrep -f "valheim_server.x86_64" | head -1)
             echo -e "${GREEN}✅ Valheim server started successfully${NC}"
             echo -e "${GREEN}   Valheim 服务器已成功启动${NC}"
             echo -e "${GREEN}   Server PID: $SERVER_PID / 服务器进程 ID: $SERVER_PID${NC}"
@@ -292,10 +292,10 @@ start_server() {
             echo -e "${YELLOW}   正在检查日志中的错误...${NC}"
             echo ""
             # Show last few lines of logs / 显示最后几行日志
-            docker-compose logs --tail=20 valheim 2>/dev/null || true
+            docker compose logs --tail=20 valheim 2>/dev/null || true
             echo ""
-            echo -e "${YELLOW}   View full logs: docker-compose logs valheim${NC}"
-            echo -e "${YELLOW}   查看完整日志: docker-compose logs valheim${NC}"
+            echo -e "${YELLOW}   View full logs: docker compose logs valheim${NC}"
+            echo -e "${YELLOW}   查看完整日志: docker compose logs valheim${NC}"
             echo -e "${YELLOW}   Or check container logs: docker logs valheim-server${NC}"
             echo -e "${YELLOW}   或查看容器日志: docker logs valheim-server${NC}"
             exit 1
@@ -305,10 +305,10 @@ start_server() {
 
     # Show server configuration summary / 显示服务器配置摘要
     echo -e "${GREEN}📋 Server Configuration / 服务器配置:${NC}"
-    SERVER_NAME=$(docker-compose exec -T valheim bash -c 'echo "$SERVER_NAME"' 2>/dev/null || echo "N/A")
-    SERVER_WORLD=$(docker-compose exec -T valheim bash -c 'echo "${SERVER_WORLD:-Dedicated}"' 2>/dev/null || echo "N/A")
-    SERVER_PORT=$(docker-compose exec -T valheim bash -c 'echo "${SERVER_PORT:-2456}"' 2>/dev/null || echo "N/A")
-    SERVER_PUBLIC=$(docker-compose exec -T valheim bash -c 'echo "${SERVER_PUBLIC:-1}"' 2>/dev/null || echo "N/A")
+    SERVER_NAME=$(docker compose exec -T valheim bash -c 'echo "$SERVER_NAME"' 2>/dev/null || echo "N/A")
+    SERVER_WORLD=$(docker compose exec -T valheim bash -c 'echo "${SERVER_WORLD:-Dedicated}"' 2>/dev/null || echo "N/A")
+    SERVER_PORT=$(docker compose exec -T valheim bash -c 'echo "${SERVER_PORT:-2456}"' 2>/dev/null || echo "N/A")
+    SERVER_PUBLIC=$(docker compose exec -T valheim bash -c 'echo "${SERVER_PUBLIC:-1}"' 2>/dev/null || echo "N/A")
     
     echo -e "   ${BLUE}Name:${NC}     ${SERVER_NAME}"
     echo -e "   ${BLUE}World:${NC}    ${SERVER_WORLD}"
@@ -318,13 +318,13 @@ start_server() {
 
     # Show container status / 显示容器状态
     echo -e "${GREEN}📊 Container Status / 容器状态:${NC}"
-    docker-compose ps valheim
+    docker compose ps valheim
     echo ""
 
     # Show helpful commands / 显示有用的命令
     echo -e "${GREEN}💡 Useful Commands / 有用命令:${NC}"
-    echo -e "   ${BLUE}View logs:${NC}     docker-compose logs -f valheim"
-    echo -e "   ${BLUE}查看日志:${NC}      docker-compose logs -f valheim"
+    echo -e "   ${BLUE}View logs:${NC}     docker compose logs -f valheim"
+    echo -e "   ${BLUE}查看日志:${NC}      docker compose logs -f valheim"
     echo -e "   ${BLUE}Stop server:${NC}   ./server.sh stop"
     echo -e "   ${BLUE}停止服务器:${NC}   ./server.sh stop"
     echo -e "   ${BLUE}Check status:${NC} ./server.sh status"
@@ -349,7 +349,7 @@ stop_server() {
     echo ""
 
     # Check if container is running / 检查容器是否运行
-    if ! docker-compose ps | grep -q "Up"; then
+    if ! docker compose ps | grep -q "Up"; then
         echo -e "${YELLOW}ℹ️  Container is not running${NC}"
         echo -e "${YELLOW}   容器未运行${NC}"
         return 0
@@ -359,7 +359,7 @@ stop_server() {
     # Use service name to ensure only valheim service is stopped / 使用服务名确保只停止 valheim 服务
     echo -e "${YELLOW}🛑 Stopping container...${NC}"
     echo -e "${YELLOW}   正在停止容器...${NC}"
-    docker-compose stop valheim
+    docker compose stop valheim
 
     echo -e "${GREEN}✅ Server stopped successfully${NC}"
     echo -e "${GREEN}   服务器已成功停止${NC}"
@@ -400,13 +400,13 @@ status_server() {
 
     # Container status / 容器状态
     echo -e "${YELLOW}🐳 Container Status / 容器状态:${NC}"
-    if docker-compose ps | grep -q "valheim-server"; then
-        if docker-compose ps | grep -q "Up"; then
+    if docker compose ps | grep -q "valheim-server"; then
+        if docker compose ps | grep -q "Up"; then
             echo -e "   ${GREEN}✅ Running / 运行中${NC}"
-            docker-compose ps
+            docker compose ps
         else
             echo -e "   ${YELLOW}⏸️  Stopped / 已停止${NC}"
-            docker-compose ps
+            docker compose ps
         fi
     else
         echo -e "   ${RED}❌ Not found / 未找到${NC}"
@@ -414,10 +414,10 @@ status_server() {
     echo ""
 
     # Server process status / 服务器进程状态
-    if docker-compose ps | grep -q "Up"; then
+    if docker compose ps | grep -q "Up"; then
         echo -e "${YELLOW}🎮 Server Process Status / 服务器进程状态:${NC}"
-        if docker-compose exec -T valheim pgrep -f "valheim_server.x86_64" > /dev/null 2>&1; then
-            SERVER_PID=$(docker-compose exec -T valheim pgrep -f "valheim_server.x86_64" | head -1)
+        if docker compose exec -T valheim pgrep -f "valheim_server.x86_64" > /dev/null 2>&1; then
+            SERVER_PID=$(docker compose exec -T valheim pgrep -f "valheim_server.x86_64" | head -1)
             echo -e "   ${GREEN}✅ Running (PID: $SERVER_PID) / 运行中 (PID: $SERVER_PID)${NC}"
         else
             echo -e "   ${YELLOW}⏸️  Not running / 未运行${NC}"
@@ -426,9 +426,9 @@ status_server() {
 
         # Server files status / 服务器文件状态
         echo -e "${YELLOW}📁 Server Files Status / 服务器文件状态:${NC}"
-        if docker-compose exec -T valheim test -f /valheim/valheim_server.x86_64 2>/dev/null; then
+        if docker compose exec -T valheim test -f /valheim/valheim_server.x86_64 2>/dev/null; then
             echo -e "   ${GREEN}✅ Server files found / 服务器文件已找到${NC}"
-            FILE_SIZE=$(docker-compose exec -T valheim ls -lh /valheim/valheim_server.x86_64 2>/dev/null | awk '{print $5}' || echo "unknown")
+            FILE_SIZE=$(docker compose exec -T valheim ls -lh /valheim/valheim_server.x86_64 2>/dev/null | awk '{print $5}' || echo "unknown")
             echo -e "   ${GREEN}   File size: $FILE_SIZE / 文件大小: $FILE_SIZE${NC}"
         else
             echo -e "   ${RED}❌ Server files not found / 服务器文件未找到${NC}"
@@ -438,8 +438,8 @@ status_server() {
 
     # Port status / 端口状态
     echo -e "${YELLOW}🔌 Port Status / 端口状态:${NC}"
-    if docker-compose ps | grep -q "Up"; then
-        PORTS=$(docker-compose ps valheim 2>/dev/null | tail -1 | awk '{for(i=NF;i>=1;i--) if($i ~ /udp/) print $i}' | head -1 || echo "N/A")
+    if docker compose ps | grep -q "Up"; then
+        PORTS=$(docker compose ps valheim 2>/dev/null | tail -1 | awk '{for(i=NF;i>=1;i--) if($i ~ /udp/) print $i}' | head -1 || echo "N/A")
         if [ "$PORTS" != "N/A" ] && [ -n "$PORTS" ]; then
             echo -e "   ${GREEN}Ports: $PORTS / 端口: $PORTS${NC}"
         else
@@ -477,7 +477,7 @@ remove_server() {
     echo ""
 
     # Stop server if running / 如果服务器正在运行则停止
-    if docker-compose ps | grep -q "Up"; then
+    if docker compose ps | grep -q "Up"; then
         echo -e "${YELLOW}🛑 Stopping server first...${NC}"
         echo -e "${YELLOW}   先停止服务器...${NC}"
         stop_server
@@ -487,13 +487,13 @@ remove_server() {
     # Remove container and volumes / 删除容器和数据卷
     echo -e "${YELLOW}🗑️  Removing container and volumes...${NC}"
     echo -e "${YELLOW}   正在删除容器和数据卷...${NC}"
-    docker-compose rm -sfv valheim 2>/dev/null || docker-compose down -v 2>/dev/null || true
+    docker compose rm -sfv valheim 2>/dev/null || docker compose down -v 2>/dev/null || true
 
     # Remove image / 删除镜像
     echo -e "${YELLOW}🗑️  Removing Docker image...${NC}"
     echo -e "${YELLOW}   正在删除 Docker 镜像...${NC}"
     
-    # Get project name from docker-compose / 从 docker-compose 获取项目名
+    # Get project name from docker compose / 从 docker compose 获取项目名
     PROJECT_NAME=$(basename "$SCRIPT_DIR" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]//g')
     IMAGE_NAME="${PROJECT_NAME}_valheim"
     
