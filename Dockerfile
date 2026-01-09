@@ -4,13 +4,16 @@ FROM steamcmd/steamcmd:latest
 # Set working directory / 设置工作目录
 WORKDIR /valheim
 
+# Install required dependencies for Valheim server / 安装 Valheim 服务器所需的依赖
+RUN apt update && apt install -y libpulse-dev libatomic1 libc6 && rm -rf /var/lib/apt/lists/*
+
 # Create app directory for scripts (不会被挂载覆盖) / 创建 app 目录存放脚本（不会被挂载覆盖）
 RUN mkdir -p /app/scripts
 COPY scripts/ /app/scripts/
 RUN chmod +x /app/scripts/*.sh
 
 # Expose Valheim server ports (UDP) / 暴露 Valheim 服务器端口（UDP）
-EXPOSE 2456-2457/udp
+EXPOSE 2456-2458/udp
 
 # Keep container running / 保持容器运行
 # External scripts will control the container via docker exec / 外部脚本将通过 docker exec 控制容器

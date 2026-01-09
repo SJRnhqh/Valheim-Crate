@@ -36,7 +36,7 @@ steamcmd +login anonymous +app_info_print $VALHEIM_APP_ID +quit > /dev/null 2>&1
 sleep 1
 
 # Install/update with anonymous login / 使用匿名登录安装/更新
-steamcmd +force_install_dir "$INSTALL_DIR" +login anonymous +app_update $VALHEIM_APP_ID validate +quit
+steamcmd +@sSteamCmdForcePlatformType linux +force_install_dir "$INSTALL_DIR" +login anonymous +app_update $VALHEIM_APP_ID validate +quit
 
 echo "✅ Valheim server installation/update completed!"
 echo "   Valheim 服务器安装/更新完成！"
