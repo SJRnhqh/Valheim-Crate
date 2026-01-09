@@ -86,8 +86,12 @@ SERVER_PRESET: "hard"  # Normal, Casual, Easy, Hard, Hardcore, Immersive, Hammer
 ```yaml
 SERVER_MODIFIER: "raids:none,combat:hard,resources:more"
 ```
-可用：`Combat`, `DeathPenalty`, `Resources`, `Raids`, `Portals`  
-值：`veryeasy`, `easy`, `hard`, `veryhard`, `casual`, `hardcore`, `muchless`, `less`, `more`, `muchmore`, `most`, `none`
+| 可用 | 值 |
+| combat | veryeasy, easy, hard, veryhard |
+| deathpenalty | casual, veryeasy, easy, hard, hardcore |
+| resources | muchless, less, more, muchmore, most |
+| raids | none, muchless, less, more, muchmore |
+| portals | casual, hard, veryhard |
 
 **选项 3：复选框键**
 ```yaml

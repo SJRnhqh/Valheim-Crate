@@ -86,8 +86,12 @@ Default: Normal (if nothing set)
 ```yaml
 SERVER_MODIFIER: "raids:none,combat:hard,resources:more"
 ```
-Available: `Combat`, `DeathPenalty`, `Resources`, `Raids`, `Portals`  
-Values: `veryeasy`, `easy`, `hard`, `veryhard`, `casual`, `hardcore`, `muchless`, `less`, `more`, `muchmore`, `most`, `none`
+| Available | Value |
+| combat | veryeasy, easy, hard, veryhard |
+| deathpenalty | casual, veryeasy, easy, hard, hardcore |
+| resources | muchless, less, more, muchmore, most |
+| raids | none, muchless, less, more, muchmore |
+| portals | casual, hard, veryhard |
 
 **Option 3: Checkbox Keys**
 ```yaml
