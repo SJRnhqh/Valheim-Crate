@@ -533,18 +533,22 @@ status_server() {
 # ============================================================================
 # Function: remove_server
 # 功能: 删除服务器
-# Description: Remove container, volumes, and Docker image (Safe & Clean)
-# 描述: 删除容器、数据卷和 Docker 镜像（安全且彻底）
+# Description: Remove container and Docker image (Safe & Clean)
+#              - Modified to ONLY remove the valheim service/image
+#              - Prevents accidental deletion of other services in the same compose project
+# 描述: 删除容器和 Docker 镜像（安全且彻底）
+#       - 已修改为【仅】删除 valheim 服务/镜像
+#       - 防止意外删除同一 Compose 项目中的其他服务
 # ============================================================================
 remove_server() {
     # Define variables separately to avoid ShellCheck SC2155 warning
-    # 分开定义变量以避免 ShellCheck SC2155 警告
     local HAS_CONTAINERS
     local HAS_IMAGE
 
     # Check existence before attempting removal / 删除前检查是否存在
-    HAS_CONTAINERS=$(docker compose ps -a -q 2>/dev/null)
-    HAS_IMAGE=$(docker images -q valheim 2>/dev/null)
+    # We specifically look for the 'valheim' service container
+    HAS_CONTAINERS=$(docker compose ps -a -q valheim 2>/dev/null)
+    HAS_IMAGE=$(docker images -q valheim:latest 2>/dev/null)
 
     if [ -z "$HAS_CONTAINERS" ] && [ -z "$HAS_IMAGE" ]; then
         echo -e "${YELLOW}ℹ️  Server is not installed (no containers or images found).${NC}"
@@ -556,14 +560,27 @@ remove_server() {
     echo -e "${RED}   Valheim-Crate: 正在卸载服务器...${NC}"
     echo ""
     
-    echo -e "${YELLOW}🗑️  Removing container and image...${NC}"
-    echo -e "${YELLOW}   正在删除容器和镜像...${NC}"
+    echo -e "${YELLOW}🗑️  Removing valheim container...${NC}"
+    echo -e "${YELLOW}   正在删除 valheim 容器...${NC}"
     
-    # Thorough removal / 彻底删除
-    # --rmi all: Remove images used by services / 删除服务使用的镜像
-    # -v: Remove named volumes / 删除数据卷
-    # --remove-orphans: Remove undefined containers / 删除未定义的容器
-    docker compose down --rmi all -v --remove-orphans
+    # FIXED: Use 'rm' instead of 'down' to protect other services
+    # 修正：使用 'rm' 代替 'down' 以保护其他服务
+    # -s: Stop the container if it is running / 如果正在运行先停止
+    # -f: Force removal / 强制删除
+    # -v: Remove anonymous volumes attached to the container / 删除关联的匿名卷
+    docker compose rm -s -f -v valheim
+
+    # Remove the specific image / 删除特定镜像
+    if docker image inspect valheim:latest >/dev/null 2>&1; then
+        echo -e "${YELLOW}🗑️  Removing valheim image...${NC}"
+        echo -e "${YELLOW}   正在删除 valheim 镜像...${NC}"
+        
+        # Try to remove the image. If it's used by another container, docker will error out safely.
+        # 尝试删除镜像。如果被其他容器占用，Docker 会安全地报错。
+        if ! docker rmi valheim:latest; then
+             echo -e "${YELLOW}⚠️  Could not remove image 'valheim:latest' (It might be in use by another container).${NC}"
+        fi
+    fi
 
     echo -e "${GREEN}✅ Server removed successfully${NC}"
     echo -e "${GREEN}   服务器已成功删除${NC}"
