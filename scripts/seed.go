@@ -35,12 +35,21 @@ func write7BitEncodedInt(w *bytes.Buffer, value int) {
 	w.WriteByte(byte(v))
 }
 
-func getDotNetHashCode(s string) int32 {
-	var hash int32
-	for _, c := range s {
-		hash = (hash << 5) - hash + int32(c)
+// ✅ Valheim 专用的 Stable Hash 算法
+func getValheimStableHashCode(s string) int32 {
+	h1 := int32(5381)
+	h2 := int32(5381)
+
+	for i := 0; i < len(s); i++ {
+		c := int32(s[i])
+		if i%2 == 0 {
+			// (h1 << 5) + h1 相当于 h1 * 33
+			h1 = ((h1 << 5) + h1) ^ c
+		} else {
+			h2 = ((h2 << 5) + h2) ^ c
+		}
 	}
-	return hash
+	return h1 + (h2 * 1566083941)
 }
 
 func main() {
@@ -95,7 +104,7 @@ func main() {
 	// ========================================================
 	
 	// 1. 计算旧种子的预期 Hash
-	expectedOldHash := getDotNetHashCode(currentSeed)
+	expectedOldHash := getValheimStableHashCode(currentSeed)
 	fmt.Printf("[Patcher] Expected Old Hash: %d (Scanning to find this...)\n", expectedOldHash)
 
 	// 2. 向后扫描寻找这个 Hash
@@ -158,7 +167,7 @@ func main() {
 	}
 
 	// D. New Hash
-	newHash := getDotNetHashCode(targetSeed)
+	newHash := getValheimStableHashCode(targetSeed)
 	binary.Write(newBuf, binary.LittleEndian, newHash)
 	fmt.Printf("[Patcher] Writing New Hash: %d\n", newHash)
 

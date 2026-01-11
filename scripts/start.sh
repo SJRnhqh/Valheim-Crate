@@ -11,16 +11,16 @@ if [ ! -f "/valheim/valheim_server.x86_64" ]; then
     exit 1
 fi
 
-# Required environment variables (must be set in docker-compose.yml) / 必填环境变量（必须在 docker-compose.yml 中设置）
+# Required environment variables (must be set in compose.yml) / 必填环境变量（必须在 compose.yml 中设置）
 if [ -z "$SERVER_NAME" ]; then
-    echo "❌ SERVER_NAME is required. Please set it in docker-compose.yml"
-    echo "   SERVER_NAME 是必填项，请在 docker-compose.yml 中设置"
+    echo "❌ SERVER_NAME is required. Please set it in compose.yml"
+    echo "   SERVER_NAME 是必填项，请在 compose.yml 中设置"
     exit 1
 fi
 
 if [ -z "$SERVER_PASSWORD" ]; then
-    echo "❌ SERVER_PASSWORD is required. Please set it in docker-compose.yml"
-    echo "   SERVER_PASSWORD 是必填项，请在 docker-compose.yml 中设置"
+    echo "❌ SERVER_PASSWORD is required. Please set it in compose.yml"
+    echo "   SERVER_PASSWORD 是必填项，请在 compose.yml 中设置"
     exit 1
 fi
 
@@ -55,12 +55,6 @@ echo "   Save dir: ${SERVER_SAVE_DIR}"
 if [ -n "$SERVER_LOGFILE" ]; then
     SERVER_ARGS+=(-logfile "${SERVER_LOGFILE}")
     echo "   Log file: ${SERVER_LOGFILE}"
-fi
-
-# Add seed if specified / 如果指定了种子则添加
-if [ -n "$SERVER_SEED" ]; then
-    SERVER_ARGS+=(-seed "${SERVER_SEED}")
-    echo "   Seed:     ${SERVER_SEED}"
 fi
 
 # Add preset if specified / 如果指定了预设则添加
