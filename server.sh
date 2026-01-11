@@ -71,64 +71,45 @@ check_docker() {
 # ============================================================================
 # Function: install_server
 # 功能: 安装服务器
-# Description: First time installation - build Docker image, create container,
-#              and install Valheim server files (does NOT start game process)
-# 描述: 首次安装 - 构建 Docker 镜像、创建容器、安装 Valheim 服务器文件（不启动游戏进程）
+# Description: Build Docker image, create container, and install server files
+#              (Does NOT start the game process)
+# 描述: 构建镜像、创建容器并安装服务器文件（不启动游戏进程）
 # ============================================================================
 install_server() {
     echo -e "${GREEN}📦 Valheim-Crate: Installing server...${NC}"
     echo -e "${GREEN}   Valheim-Crate: 正在安装服务器...${NC}"
-    # 提示用户数据安全，增强重复安装的信心
     echo -e "${BLUE}ℹ️  Note: Game data in /opt/server/valheim will be preserved.${NC}"
     echo -e "${BLUE}   注意：/opt/server/valheim 中的游戏数据将会被保留。${NC}"
     echo ""
 
-    # Step 1: Build and start container / 步骤 1: 构建并启动容器
-    # Note: Container runs /bin/bash to stay alive, acting as a "system" ready for commands
-    # 注意：容器运行 /bin/bash 以保持存活，作为一个准备好接收命令的“系统”
+    # Step 1: Build and create environment / 步骤 1: 构建并创建环境
     echo -e "${YELLOW}📦 Step 1/2: Building Docker image and creating environment...${NC}"
     echo -e "${YELLOW}   步骤 1/2: 构建 Docker 镜像并创建运行环境...${NC}"
     
-    # --build: Rebuild image / 重建镜像 (ensure latest code is used)
-    # --force-recreate: Recreate container / 强制重建 (handle existing container case)
-    # --remove-orphans: Clean up / 清理残留
+    # Force rebuild and recreate container / 强制重建镜像和容器
     docker compose up -d --build --force-recreate --remove-orphans valheim
 
-    # 🧹 Auto-cleanup: Remove old dangling images (<none>) created by the rebuild
-    # 自动清理：删除因重建而产生的旧悬空镜像 (<none>)
-    # 这是一个非常好的习惯，防止多次 install 后磁盘被无名镜像占满
+    # 🧹 Auto-cleanup: Remove old dangling images (<none>)
+    # 自动清理：删除因重建产生的旧悬空镜像
     echo -e "${YELLOW}🧹 Cleaning up old Docker images...${NC}"
-    echo -e "${YELLOW}   正在清理旧的 Docker 镜像...${NC}"
     docker image prune -f --filter "dangling=true"
 
-    # Wait for container to fully start / 等待容器完全启动
     echo -e "${YELLOW}⏳ Waiting for container to initialize...${NC}"
-    echo -e "${YELLOW}   等待容器初始化...${NC}"
     sleep 3
 
-    # Check if container is running / 检查容器是否运行
     if ! docker compose ps | grep -q "Up"; then
         echo -e "${RED}❌ Container failed to start environment${NC}"
-        echo -e "${RED}   环境容器启动失败${NC}"
         docker compose logs
         exit 1
     fi
 
-    echo -e "${GREEN}✅ Environment ready${NC}"
-    echo -e "${GREEN}   运行环境已就绪${NC}"
-    echo ""
-
-    # Step 2: Install server files / 步骤 2: 安装服务器文件
-    echo -e "${YELLOW}📥 Step 2/2: Downloading and installing Valheim server files...${NC}"
-    echo -e "${YELLOW}   步骤 2/2: 下载并安装 Valheim 服务器文件...${NC}"
-    echo -e "${YELLOW}   This may take several minutes depending on your internet speed.${NC}"
-    echo -e "${YELLOW}   根据您的网速，这可能需要几分钟时间。${NC}"
+    # Step 2: Install/Update server files / 步骤 2: 安装/更新服务器文件
+    echo -e "${YELLOW}📥 Step 2/2: Downloading/Updating Valheim server files...${NC}"
+    echo -e "${YELLOW}   步骤 2/2: 下载/更新 Valheim 服务器文件...${NC}"
     
     if ! docker compose exec -T valheim /app/scripts/setup.sh; then
         echo -e "${RED}❌ Server installation failed${NC}"
-        echo -e "${RED}   服务器安装失败${NC}"
         echo -e "${YELLOW}   View logs: docker compose logs valheim${NC}"
-        echo -e "${YELLOW}   查看日志: docker compose logs valheim${NC}"
         exit 1
     fi
 
@@ -136,12 +117,9 @@ install_server() {
     echo -e "${GREEN}   服务器安装成功！${NC}"
     echo ""
     
-    # Guide user to start the server / 引导用户启动服务器
+    # Guide user / 引导用户
     echo -e "${BLUE}👉 Next Step: Start the server${NC}"
-    echo -e "${BLUE}👉 下一步: 启动服务器${NC}"
     echo -e "   Run command: ${GREEN}./server.sh start${NC}"
-    echo -e "   运行命令: ${GREEN}./server.sh start${NC}"
-    echo ""
 }
 
 # ============================================================================
@@ -398,80 +376,76 @@ restart_server() {
 # ============================================================================
 # Function: status_server
 # 功能: 查看服务器状态
-# Description: Display detailed server status (Container, Resources, Config, Data)
-# 描述: 显示详细的服务器状态（容器、资源、配置、数据）
+# Description: Display detailed server status (Container, Resources, Config)
+# 描述: 显示详细的服务器状态（容器、资源、配置）
 # ============================================================================
 status_server() {
     echo -e "${GREEN}📊 Valheim-Crate: Server Status${NC}"
     echo -e "${GREEN}   Valheim-Crate: 服务器状态${NC}"
     echo ""
 
-    # 1. Container Check / 容器检查
-    # Use -q to get ID, more robust than grep / 使用 -q 获取 ID，比 grep 更稳健
-    local CONTAINER_ID=$(docker compose ps -q valheim 2>/dev/null)
+    local CONTAINER_ID
+    CONTAINER_ID=$(docker compose ps -q valheim 2>/dev/null)
     local IS_RUNNING=false
 
     echo -e "${YELLOW}🐳 Container Status / 容器状态:${NC}"
     if [ -n "$CONTAINER_ID" ]; then
-        # Check if actually running / 检查是否正在运行
         if docker compose ps --filter "status=running" -q valheim >/dev/null 2>&1; then
             echo -e "   ${GREEN}✅ Running / 运行中${NC}"
             IS_RUNNING=true
         else
-            echo -e "   ${YELLOW}⏸️  Stopped (Container exists) / 已停止 (容器存在)${NC}"
+            echo -e "   ${YELLOW}⏸️  Stopped / 已停止${NC}"
         fi
     else
-        echo -e "   ${RED}❌ Not installed (No container found) / 未安装 (未找到容器)${NC}"
-        # If not installed, we can stop here or just show data dir status
-        # 如果未安装，可以到此为止，或者继续显示数据目录状态
+        echo -e "   ${RED}❌ Not installed / 未安装${NC}"
     fi
     echo ""
 
-    # 2. Runtime Info (Only if running) / 运行信息 (仅当运行时显示)
+    # Only show details if running / 仅在运行时显示详情
     if [ "$IS_RUNNING" = true ]; then
         echo -e "${YELLOW}🎮 Runtime Performance / 运行性能:${NC}"
         
-        # Check process / 检查进程
         if docker compose exec -T valheim pgrep -f "valheim_server.x86_64" > /dev/null 2>&1; then
-            local SERVER_PID=$(docker compose exec -T valheim pgrep -f "valheim_server.x86_64" | head -1)
+            local SERVER_PID
+            SERVER_PID=$(docker compose exec -T valheim pgrep -f "valheim_server.x86_64" | head -1)
             echo -e "   ${GREEN}Process: ✅ Running (PID: $SERVER_PID)${NC}"
             
-            # Resource Usage (CPU/RAM) / 资源占用
-            # --no-stream ensures we get a static snapshot / --no-stream 确保获取静态快照
-            local STATS=$(docker stats --no-stream --format "CPU: {{.CPUPerc}} / RAM: {{.MemUsage}}" "$CONTAINER_ID")
+            # Resource Usage / 资源占用
+            local STATS
+            STATS=$(docker stats --no-stream --format "CPU: {{.CPUPerc}} / RAM: {{.MemUsage}}" "$CONTAINER_ID")
             echo -e "   ${BLUE}Resources: $STATS${NC}"
             
             # Uptime / 运行时间
-            local UPTIME=$(docker compose ps --format "{{.RunningFor}}" valheim)
+            local UPTIME
+            UPTIME=$(docker compose ps --format "{{.RunningFor}}" valheim)
             echo -e "   ${BLUE}Uptime:    $UPTIME${NC}"
         else
-            echo -e "   ${YELLOW}Process: ⏳ Starting or Crashing... (Process not found)${NC}"
+            echo -e "   ${YELLOW}Process: ⏳ Starting... (Wait for it)${NC}"
         fi
         echo ""
 
-        # 3. Active Configuration / 当前生效配置
+        # Show actual loaded config / 显示实际加载的配置
         echo -e "${YELLOW}⚙️  Active Configuration / 当前配置:${NC}"
-        # Read env directly from container to verify what's loaded / 直接从容器读取环境变量以验证加载内容
-        local ENV_VARS=$(docker compose exec -T valheim env)
-        local NAME=$(echo "$ENV_VARS" | grep "^SERVER_NAME=" | cut -d= -f2-)
-        local WORLD=$(echo "$ENV_VARS" | grep "^SERVER_WORLD=" | cut -d= -f2-)
-        local PORT=$(echo "$ENV_VARS" | grep "^SERVER_PORT=" | cut -d= -f2-)
+        local ENV_VARS
+        ENV_VARS=$(docker compose exec -T valheim env)
+        local NAME
+        NAME=$(echo "$ENV_VARS" | grep "^SERVER_NAME=" | cut -d= -f2-)
+        local PORT
+        PORT=$(echo "$ENV_VARS" | grep "^SERVER_PORT=" | cut -d= -f2-)
         
-        echo -e "   ${BLUE}Name:${NC}  $NAME"
-        echo -e "   ${BLUE}World:${NC} $WORLD"
-        echo -e "   ${BLUE}Port:${NC}  $PORT/udp"
+        echo -e "   ${BLUE}Name:${NC} $NAME"
+        echo -e "   ${BLUE}Port:${NC} $PORT/udp"
         echo ""
     fi
 
-    # 4. Data Directory Status / 数据目录状态
+    # Storage Check / 存储检查
     echo -e "${YELLOW}💾 Storage Status / 存储状态:${NC}"
     if [ -d "/opt/server/valheim" ]; then
-        local DATA_SIZE=$(du -sh /opt/server/valheim 2>/dev/null | awk '{print $1}' || echo "unknown")
-        echo -e "   ${GREEN}✅ Data directory exists / 数据目录存在${NC}"
-        echo -e "   ${GREEN}   Location: /opt/server/valheim${NC}"
-        echo -e "   ${GREEN}   Size:     $DATA_SIZE${NC}"
+        local DATA_SIZE
+        DATA_SIZE=$(du -sh /opt/server/valheim 2>/dev/null | awk '{print $1}' || echo "unknown")
+        echo -e "   ${GREEN}✅ Data Location: /opt/server/valheim ($DATA_SIZE)${NC}"
     else
-        echo -e "   ${YELLOW}⚠️  Data directory not found / 数据目录未找到${NC}"
+        echo -e "   ${YELLOW}⚠️  Data directory not found${NC}"
     fi
     echo ""
 }
@@ -479,58 +453,44 @@ status_server() {
 # ============================================================================
 # Function: remove_server
 # 功能: 删除服务器
-# Description: Remove container, volumes, and Docker image
-#              Game data in /opt/server/valheim is preserved
-# 描述: 删除容器、数据卷和 Docker 镜像
-#       保留 /opt/server/valheim 中的游戏数据
+# Description: Remove container, volumes, and Docker image (Safe & Clean)
+# 描述: 删除容器、数据卷和 Docker 镜像（安全且彻底）
 # ============================================================================
 remove_server() {
-    # Define variables first to avoid ShellCheck SC2155 warning
-    # 先单独定义变量，避免 ShellCheck SC2155 警告（即避免掩盖命令的返回值）
+    # Define variables separately to avoid ShellCheck SC2155 warning
+    # 分开定义变量以避免 ShellCheck SC2155 警告
     local HAS_CONTAINERS
     local HAS_IMAGE
 
-    # Check if anything exists to remove / 检查是否存在需要删除的内容
-    
-    # 1. Check containers (running or stopped) / 检查容器（运行中或已停止）
+    # Check existence before attempting removal / 删除前检查是否存在
     HAS_CONTAINERS=$(docker compose ps -a -q 2>/dev/null)
-    
-    # 2. Check image (assuming image name is 'valheim') / 检查镜像（假设镜像名为 'valheim'）
-    # Note: checks for any image name containing "valheim"
     HAS_IMAGE=$(docker images -q valheim 2>/dev/null)
 
-    # If no containers and no image, exit early / 如果既无容器也无镜像，提前退出
     if [ -z "$HAS_CONTAINERS" ] && [ -z "$HAS_IMAGE" ]; then
         echo -e "${YELLOW}ℹ️  Server is not installed (no containers or images found).${NC}"
         echo -e "${YELLOW}   服务器未安装（未发现容器或镜像）。${NC}"
-        echo -e "${YELLOW}   Nothing to remove.${NC}"
         return 0
     fi
 
     echo -e "${RED}🗑️  Valheim-Crate: Uninstalling server...${NC}"
     echo -e "${RED}   Valheim-Crate: 正在卸载服务器...${NC}"
     echo ""
-
-    # 使用 Docker Compose 原生命令彻底清理
-    # --rmi all: 删除所有服务使用的镜像
-    # -v: 删除数据卷
-    # --remove-orphans: 清理未定义的服务
     
     echo -e "${YELLOW}🗑️  Removing container and image...${NC}"
     echo -e "${YELLOW}   正在删除容器和镜像...${NC}"
     
-    # Execute removal / 执行删除
+    # Thorough removal / 彻底删除
+    # --rmi all: Remove images used by services / 删除服务使用的镜像
+    # -v: Remove named volumes / 删除数据卷
+    # --remove-orphans: Remove undefined containers / 删除未定义的容器
     docker compose down --rmi all -v --remove-orphans
 
     echo -e "${GREEN}✅ Server removed successfully${NC}"
     echo -e "${GREEN}   服务器已成功删除${NC}"
     echo ""
     
-    # 再次确认数据安全
     echo -e "${YELLOW}ℹ️  Note: Game data in /opt/server/valheim is preserved (Bind Mount)${NC}"
     echo -e "${YELLOW}   注意: /opt/server/valheim 中的游戏数据已保留（绑定挂载）${NC}"
-    echo -e "${YELLOW}   To completely remove, manually delete: /opt/server/valheim${NC}"
-    echo -e "${YELLOW}   要完全删除，请手动删除: /opt/server/valheim${NC}"
 }
 
 # ============================================================================
@@ -543,15 +503,14 @@ show_usage() {
     echo -e "${YELLOW}Usage: $0 [install|update|start|stop|restart|status|remove]${NC}"
     echo -e "${YELLOW}用法: $0 [install|update|start|stop|restart|status|remove]${NC}"
     echo ""
-    echo -e "${GREEN}Commands:${NC}"
-    echo -e "${GREEN}命令:${NC}"
-    echo -e "  ${BLUE}install${NC}  - Install server (build image, create container, install files, update environment) / 安装服务器（构建镜像、创建容器、安装文件、更新环境变量）"
-    echo -e "  ${BLUE}update${NC}   - Update server files only (no image rebuild, requires install first) / 仅更新服务器文件（不重建镜像，需要先安装）"
-    echo -e "  ${BLUE}start${NC}    - Start the server (container level) / 启动服务器（容器层面）"
-    echo -e "  ${BLUE}stop${NC}     - Stop the server (container level) / 停止服务器（容器层面）"
-    echo -e "  ${BLUE}restart${NC}  - Restart the server (container level) / 重启服务器（容器层面）"
-    echo -e "  ${BLUE}status${NC}   - Show server status / 显示服务器状态"
-    echo -e "  ${RED}remove${NC}   - Remove container and image (game data preserved) / 删除容器和镜像（游戏数据保留）"
+    echo -e "${GREEN}Commands / 命令:${NC}"
+    echo -e "  ${BLUE}install${NC}  - Build image & install files (Does NOT start server) / 构建镜像并安装文件（不启动服务器）"
+    echo -e "  ${BLUE}update${NC}   - Update game files only / 仅更新游戏文件"
+    echo -e "  ${BLUE}start${NC}    - Start the server / 启动服务器"
+    echo -e "  ${BLUE}stop${NC}     - Stop the server / 停止服务器"
+    echo -e "  ${BLUE}restart${NC}  - Restart the server / 重启服务器"
+    echo -e "  ${BLUE}status${NC}   - Show detailed status / 显示详细状态"
+    echo -e "  ${RED}remove${NC}   - Remove all (Preserves data) / 删除所有（保留数据）"
 }
 
 # ============================================================================
