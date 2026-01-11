@@ -126,49 +126,62 @@ install_server() {
 # Function: update_server
 # 功能: 更新服务器
 # Description: Update Valheim server files to latest version
-#              Only updates game files, does not rebuild image or recreate container
-#              Requires server to be installed first (will error if not)
+#              Safely stops the server first to prevent data corruption
 # 描述: 更新 Valheim 服务器文件到最新版本
-#       只更新游戏文件，不重新构建镜像或重新创建容器
-#       需要先安装服务器（如果未安装会报错）
+#       为了防止数据损坏，会先安全地停止服务器
 # ============================================================================
 update_server() {
     echo -e "${GREEN}🔄 Valheim-Crate: Updating server...${NC}"
     echo -e "${GREEN}   Valheim-Crate: 正在更新服务器...${NC}"
     echo ""
 
-    # Check if server was previously installed / 检查服务器是否已安装
-    # Check if container exists or server files exist / 检查容器是否存在或服务器文件是否存在
-    if ! docker compose ps | grep -q "valheim-server" && [ ! -f "/opt/server/valheim/valheim_server.x86_64" ]; then
+    # 1. Check if installed / 检查是否安装
+    if [ -z "$(docker compose ps -a -q valheim 2>/dev/null)" ]; then
         echo -e "${RED}❌ Server not installed. Please run './server.sh install' first${NC}"
         echo -e "${RED}   服务器未安装。请先运行 './server.sh install'${NC}"
         exit 1
     fi
 
-    # Start container if not running / 如果容器未运行则启动
-    if ! docker compose ps valheim | grep -q "Up"; then
-        echo -e "${YELLOW}📦 Starting container...${NC}"
-        echo -e "${YELLOW}   正在启动容器...${NC}"
-        docker compose up -d valheim
-        sleep 3
+    # 2. Stop server to ensure safe update / 停止服务器以确保存档安全
+    # Even if it looks like it's not running, we stop the container to be sure no processes are locking files
+    # 即使看起来没在运行，我们也停止容器，确保没有进程锁定文件
+    if docker compose ps | grep -q "Up"; then
+        echo -e "${YELLOW}🛑 Stopping server to perform safe update...${NC}"
+        echo -e "${YELLOW}   正在停止服务器以执行安全更新...${NC}"
+        docker compose stop valheim
+        sleep 2
     fi
 
-    # Update server files / 更新服务器文件
-    echo -e "${YELLOW}📥 Updating Valheim server files...${NC}"
-    echo -e "${YELLOW}   正在更新 Valheim 服务器文件...${NC}"
-    echo -e "${YELLOW}   This may take several minutes, please wait...${NC}"
-    echo -e "${YELLOW}   这可能需要几分钟时间，请耐心等待...${NC}"
+    # 3. Start container in idle mode / 以空闲模式启动容器
+    # This starts the container (OS + Tools) but DOES NOT start the game server process
+    # 这会启动容器（操作系统+工具），但【不会】启动游戏服务器进程
+    echo -e "${YELLOW}📦 Starting container environment...${NC}"
+    echo -e "${YELLOW}   正在启动容器环境...${NC}"
+    docker compose up -d valheim
+    
+    # Wait for container to be ready
+    sleep 2
+
+    # 4. Run update script / 运行更新脚本
+    echo -e "${YELLOW}📥 Downloading/Updating Valheim server files...${NC}"
+    echo -e "${YELLOW}   正在下载/更新 Valheim 服务器文件...${NC}"
+    echo -e "${YELLOW}   This may take a few minutes...${NC}"
+    echo -e "${YELLOW}   这可能需要几分钟...${NC}"
     
     if ! docker compose exec -T valheim /app/scripts/setup.sh; then
         echo -e "${RED}❌ Server update failed${NC}"
         echo -e "${RED}   服务器更新失败${NC}"
         echo -e "${YELLOW}   View logs: docker compose logs valheim${NC}"
-        echo -e "${YELLOW}   查看日志: docker compose logs valheim${NC}"
         exit 1
     fi
 
-    echo -e "${GREEN}✅ Server update completed!${NC}"
-    echo -e "${GREEN}   服务器更新完成！${NC}"
+    echo -e "${GREEN}✅ Server update completed successfully!${NC}"
+    echo -e "${GREEN}   服务器更新成功！${NC}"
+    echo ""
+    
+    # Guide user / 引导用户
+    echo -e "${BLUE}👉 Next Step: Start the server${NC}"
+    echo -e "   Run command: ${GREEN}./server.sh start${NC}"
 }
 
 # ============================================================================
