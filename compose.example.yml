@@ -1,5 +1,6 @@
 services:
   valheim:
+    image: valheim:latest
     build:
       context: .
       dockerfile: Dockerfile

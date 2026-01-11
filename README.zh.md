@@ -38,7 +38,7 @@ nano compose.yml  # 设置 SERVER_NAME 和 SERVER_PASSWORD
 
 | 命令 | 说明 |
 |-----|------|
-| `install` | 首次安装（构建、创建、安装、启动） |
+| `install` | 首次安装（构建、创建、安装、更新环境变量） |
 | `update` | 更新服务器文件（不重建） |
 | `start` | 启动服务器（如需要会自动安装） |
 | `stop` | 停止服务器 |

@@ -38,7 +38,7 @@ nano compose.yml  # Set SERVER_NAME and SERVER_PASSWORD
 
 | Command | Description |
 |---------|-------------|
-| `install` | First-time installation (build, create, install, start) |
+| `install` | First-time installation (build, create, install, update environment) |
 | `update` | Update server files (no rebuild) |
 | `start` | Start server (auto-install if needed) |
 | `stop` | Stop server |
