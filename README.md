@@ -1,7 +1,7 @@
-# Valheim-Crate
+# 🛡️ Valheim-Crate ⚔️
 
 <div align="center">
-  <img src="image/Valheim-Crate.png" alt="Valheim-Crate Logo" width="250">
+  <img src="image/Valheim-Crate.png" alt="Valheim-Crate Logo" width="300">
 </div>
 
 > 🐳 **Valheim dedicated server in Docker** — Zero setup, runs on Linux.

@@ -1,7 +1,7 @@
-# Valheim-Crate
+# 🛡️ Valheim-Crate ⚔️
 
 <div align="center">
-  <img src="image/Valheim-Crate.png" alt="Valheim-Crate Logo" width="250">
+  <img src="image/Valheim-Crate.png" alt="Valheim-Crate Logo" width="300">
 </div>
 
 > 🐳 **基于 Docker 的 Valheim 专用服务器** — 零配置，在 Linux 上运行。
