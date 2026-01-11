@@ -51,11 +51,12 @@ func getValheimStableHashCode(s string) int32 {
 
 // --- 主程序 ---
 func main() {
-	// 0. 参数校验
+	// 0. 参数校验 (修复部分)
 	if len(os.Args) < 4 {
-		return 
+		fmt.Printf("[Patcher] ❌ Invalid args. Usage: %s <worldName> <saveDir> <seed>\n", filepath.Base(os.Args[0]))
+		os.Exit(1)
 	}
-
+	
 	worldName := os.Args[1]
 	saveDir := os.Args[2]
 	targetSeed := os.Args[3]
