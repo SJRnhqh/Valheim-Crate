@@ -50,6 +50,7 @@ cd "$SCRIPT_DIR"
 # 描述: 验证 Docker 和 Docker Compose 是否已安装
 # ============================================================================
 check_docker() {
+    # 1. Check Docker Core / 检查 Docker 核心
     if ! command -v docker &> /dev/null; then
         echo -e "${RED}❌ Docker is not installed. Please install Docker first.${NC}"
         echo -e "${RED}   Docker 未安装，请先安装 Docker${NC}"
@@ -58,10 +59,31 @@ check_docker() {
         exit 1
     fi
 
-    # Check if Docker Compose is installed / 检查 Docker Compose 是否安装
-    if ! command -v docker compose &> /dev/null && ! docker compose version &> /dev/null; then
-        echo -e "${RED}❌ Docker Compose is not installed. Please install Docker Compose first.${NC}"
-        echo -e "${RED}   Docker Compose 未安装，请先安装 Docker Compose${NC}"
+    # 2. Check Docker Compose (Plugin or Standalone) / 检查 Docker Compose (插件版或独立版)
+    # Strategy: Try 'docker compose version' first, then fallback to 'docker-compose'
+    
+    if docker compose version &> /dev/null; then
+        # Plugin version is available (Modern standard)
+        # 插件版可用（现代标准），无需操作
+        :
+    elif command -v docker-compose &> /dev/null; then
+        # Standalone version is available (Legacy compatibility)
+        # 独立版可用（旧版兼容）
+        
+        # Define a wrapper function to redirect 'docker compose' -> 'docker-compose'
+        # 定义包装函数，将脚本中的 'docker compose' 重定向到 'docker-compose'
+        docker() {
+            if [ "$1" = "compose" ]; then
+                shift
+                docker-compose "$@"
+            else
+                command docker "$@"
+            fi
+        }
+    else
+        # Neither found / 两者都没找到
+        echo -e "${RED}❌ Docker Compose is not installed.${NC}"
+        echo -e "${RED}   Docker Compose 未安装。${NC}"
         echo -e "${YELLOW}   Installation guide: https://docs.docker.com/compose/install/${NC}"
         echo -e "${YELLOW}   安装指南: https://docs.docker.com/compose/install/${NC}"
         exit 1
