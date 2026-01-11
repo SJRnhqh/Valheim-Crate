@@ -1,6 +1,6 @@
 # Valheim-Crate
 
-![Valheim-Crate Logo](image/Valheim-Crate.png)
+<img src="image/Valheim-Crate.png" alt="Valheim-Crate Logo" width="250">
 
 > 🐳 **Valheim dedicated server in Docker** — Zero setup, runs on Linux.
 

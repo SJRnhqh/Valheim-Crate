@@ -1,6 +1,6 @@
 # Valheim-Crate
 
-![Valheim-Crate Logo](image/Valheim-Crate.png)
+<img src="image/Valheim-Crate.png" alt="Valheim-Crate Logo" width="250">
 
 > 🐳 **基于 Docker 的 Valheim 专用服务器** — 零配置，在 Linux 上运行。
 
