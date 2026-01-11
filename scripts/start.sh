@@ -1,169 +1,118 @@
 #!/bin/bash
 # Start script for Valheim server / Valheim 服务器启动脚本
-# Start the Valheim dedicated server / 启动 Valheim 专用服务器
 
-set -e  # 遇到错误立即退出
+set -e
 
-# 检查服务器文件是否存在 / Check if server files exist
+# 1. 基础检查
 if [ ! -f "/valheim/valheim_server.x86_64" ]; then
     echo "❌ Valheim server not found. Please run setup.sh first."
-    echo "   服务器文件未找到，请先运行 setup.sh"
     exit 1
 fi
 
-# Required environment variables (must be set in compose.yml) / 必填环境变量（必须在 compose.yml 中设置）
-if [ -z "$SERVER_NAME" ]; then
-    echo "❌ SERVER_NAME is required. Please set it in compose.yml"
-    echo "   SERVER_NAME 是必填项，请在 compose.yml 中设置"
+if [ -z "$SERVER_NAME" ] || [ -z "$SERVER_PASSWORD" ]; then
+    echo "❌ SERVER_NAME and SERVER_PASSWORD are required."
     exit 1
 fi
 
-if [ -z "$SERVER_PASSWORD" ]; then
-    echo "❌ SERVER_PASSWORD is required. Please set it in compose.yml"
-    echo "   SERVER_PASSWORD 是必填项，请在 compose.yml 中设置"
-    exit 1
-fi
-
-# Optional environment variables with defaults / 可选环境变量（带默认值）
+# 2. 默认变量
 : "${SERVER_PORT:=2456}"
 : "${SERVER_WORLD:=Dedicated}"
 : "${SERVER_PUBLIC:=1}"
 : "${SERVER_SAVE_DIR:=/valheim/saves}"
 : "${SERVER_LOGFILE:=}"
 
-echo "🎮 Starting Valheim server:"
-echo "   Name:     ${SERVER_NAME}"
-echo "   World:    ${SERVER_WORLD}"
-echo "   Port:     ${SERVER_PORT}/udp"
-echo "   Password: [hidden]"
-echo "   Public:   ${SERVER_PUBLIC}"
+echo "🎮 Starting Valheim server: ${SERVER_NAME} (${SERVER_WORLD})"
 
-# Build server command arguments / 构建服务器命令参数
+# 3. 构建参数
 SERVER_ARGS=(
     -name "${SERVER_NAME}"
     -port "${SERVER_PORT}"
     -world "${SERVER_WORLD}"
     -password "${SERVER_PASSWORD}"
     -public "${SERVER_PUBLIC}"
+    -savedir "${SERVER_SAVE_DIR}"
 )
 
-# Add save directory / 添加存档目录
-SERVER_ARGS+=(-savedir "${SERVER_SAVE_DIR}")
-echo "   Save dir: ${SERVER_SAVE_DIR}"
-
-# Add log file if specified / 如果指定了日志文件则添加
+# 日志文件处理 (增加目录检查)
 if [ -n "$SERVER_LOGFILE" ]; then
+    mkdir -p "$(dirname "$SERVER_LOGFILE")"
     SERVER_ARGS+=(-logfile "${SERVER_LOGFILE}")
-    echo "   Log file: ${SERVER_LOGFILE}"
 fi
 
-# Add preset if specified / 如果指定了预设则添加
-if [ -n "$SERVER_PRESET" ]; then
-    SERVER_ARGS+=(-preset "${SERVER_PRESET}")
-    echo "   Preset:   ${SERVER_PRESET}"
-fi
+# 预设与修改器
+[ -n "$SERVER_PRESET" ] && SERVER_ARGS+=(-preset "${SERVER_PRESET}")
 
-# Add modifiers if specified / 如果指定了修改器则添加
-# Format: "modifier1:value1,modifier2:value2" / 格式: "modifier1:value1,modifier2:value2"
 if [ -n "$SERVER_MODIFIER" ]; then
     IFS=',' read -ra MODIFIERS <<< "$SERVER_MODIFIER"
-    for modifier_pair in "${MODIFIERS[@]}"; do
-        modifier_pair=$(echo "$modifier_pair" | xargs)  # Trim whitespace / 去除空格
-        if [[ "$modifier_pair" == *":"* ]]; then
-            # Format: modifier:value / 格式: modifier:value
-            modifier=$(echo "$modifier_pair" | cut -d':' -f1 | xargs)
-            value=$(echo "$modifier_pair" | cut -d':' -f2 | xargs)
-            SERVER_ARGS+=(-modifier "${modifier}" "${value}")
-            echo "   Modifier: ${modifier} ${value}"
+    for m in "${MODIFIERS[@]}"; do
+        m=$(echo "$m" | xargs)
+        if [[ "$m" == *":"* ]]; then
+            k=$(echo "$m" | cut -d':' -f1 | xargs)
+            v=$(echo "$m" | cut -d':' -f2 | xargs)
+            SERVER_ARGS+=(-modifier "$k" "$v")
         fi
     done
 fi
 
-# Add setkey if specified / 如果指定了 setkey 则添加
-# Format: "key1,key2,key3" / 格式: "key1,key2,key3"
 if [ -n "$SERVER_SETKEY" ]; then
     IFS=',' read -ra SETKEYS <<< "$SERVER_SETKEY"
-    for key in "${SETKEYS[@]}"; do
-        key=$(echo "$key" | xargs)  # Trim whitespace / 去除空格
-        if [ -n "$key" ]; then
-            SERVER_ARGS+=(-setkey "${key}")
-            echo "   SetKey:   ${key}"
-        fi
+    for k in "${SETKEYS[@]}"; do
+        k=$(echo "$k" | xargs)
+        [ -n "$k" ] && SERVER_ARGS+=(-setkey "$k")
     done
 fi
 
-# Add advanced settings if specified / 如果指定了高级设置则添加
-if [ -n "$SERVER_SAVEINTERVAL" ]; then
-    SERVER_ARGS+=(-saveinterval "${SERVER_SAVEINTERVAL}")
-    echo "   Save interval: ${SERVER_SAVEINTERVAL}s"
-fi
+# 高级参数
+[ -n "$SERVER_SAVEINTERVAL" ] && SERVER_ARGS+=(-saveinterval "${SERVER_SAVEINTERVAL}")
+[ -n "$SERVER_BACKUPS" ] && SERVER_ARGS+=(-backups "${SERVER_BACKUPS}")
+[ -n "$SERVER_BACKUPSHORT" ] && SERVER_ARGS+=(-backupshort "${SERVER_BACKUPSHORT}")
+[ -n "$SERVER_BACKUPLONG" ] && SERVER_ARGS+=(-backuplong "${SERVER_BACKUPLONG}")
+[ "$SERVER_CROSSPLAY" = "1" ] && SERVER_ARGS+=(-crossplay)
+[ -n "$SERVER_INSTANCEID" ] && SERVER_ARGS+=(-instanceid "${SERVER_INSTANCEID}")
 
-if [ -n "$SERVER_BACKUPS" ]; then
-    SERVER_ARGS+=(-backups "${SERVER_BACKUPS}")
-    echo "   Backups: ${SERVER_BACKUPS}"
-fi
-
-if [ -n "$SERVER_BACKUPSHORT" ]; then
-    SERVER_ARGS+=(-backupshort "${SERVER_BACKUPSHORT}")
-    echo "   Backup short: ${SERVER_BACKUPSHORT}s"
-fi
-
-if [ -n "$SERVER_BACKUPLONG" ]; then
-    SERVER_ARGS+=(-backuplong "${SERVER_BACKUPLONG}")
-    echo "   Backup long: ${SERVER_BACKUPLONG}s"
-fi
-
-if [ -n "$SERVER_CROSSPLAY" ] && [ "$SERVER_CROSSPLAY" = "1" ]; then
-    SERVER_ARGS+=(-crossplay)
-    echo "   Crossplay: enabled"
-fi
-
-if [ -n "$SERVER_INSTANCEID" ]; then
-    SERVER_ARGS+=(-instanceid "${SERVER_INSTANCEID}")
-    echo "   Instance ID: ${SERVER_INSTANCEID}"
-fi
-
-echo ""
-
-# Set environment variables for Valheim server / 设置 Valheim 服务器环境变量
-# Save original LD_LIBRARY_PATH / 保存原始的 LD_LIBRARY_PATH
+# 4. 环境变量
 export templdpath=$LD_LIBRARY_PATH
-
-# Set LD_LIBRARY_PATH to include linux64 directory / 设置 LD_LIBRARY_PATH 包含 linux64 目录
-# This is required for the server to find its libraries / 这是服务器查找库文件所必需的
 export LD_LIBRARY_PATH=/valheim/linux64:$LD_LIBRARY_PATH
-
-# Set Steam App ID for Valheim server runtime / 设置 Valheim 服务器运行时的 Steam App ID
-# Note: 892970 is the runtime App ID (from official script), 896660 is the dedicated server App ID for SteamCMD
-# 注意：892970 是运行时 App ID（来自官方脚本），896660 是 SteamCMD 下载专用服务器的 App ID
 export SteamAppId=892970
 
 # ==============================================================================
-# Auto-Patcher Logic (Go Implementation) / 自动补丁逻辑 (Go 实现)
+# Auto-Patcher Logic (自动补丁逻辑)
 # ==============================================================================
-# Check if SERVER_SEED is set / 检查是否设置了种子环境变量
 if [ -n "$SERVER_SEED" ]; then
+    FWL_PATH="${SERVER_SAVE_DIR}/worlds_local/${SERVER_WORLD}.fwl"
+
+    # [场景 A: 首次运行] 文件不存在 -> 启动临时进程生成文件 -> Kill -> 后面改种子
+    if [ ! -f "$FWL_PATH" ]; then
+        echo "🌱 First run detected. Initializing world structure..."
+        
+        # 后台启动，生成 .fwl
+        /valheim/valheim_server.x86_64 "${SERVER_ARGS[@]}" > /dev/null 2>&1 &
+        TEMP_PID=$!
+        
+        echo "⏳ Waiting for .fwl metadata..."
+        count=0
+        while [ ! -f "$FWL_PATH" ] && [ $count -lt 60 ]; do
+            sleep 1; ((count++))
+        done
+
+        # 拿到文件后，立刻杀掉临时进程
+        echo "🛑 Metadata created. Stopping initialization..."
+        kill -SIGINT "$TEMP_PID"
+        wait "$TEMP_PID" || true
+        
+        # 删掉生成的随机地图 DB (后面 Patcher 也会删，这里双重保险)
+        rm -f "${SERVER_SAVE_DIR}/worlds_local/${SERVER_WORLD}.db"
+    fi
+
+    # [场景 B: 日常运行] 文件已存在 -> 运行 Patcher
+    # Patcher 内部逻辑：如果种子一致 -> 直接退出；不一致 -> 修改并删 DB
     echo "⚙️  Running Valheim Seed Patcher..."
-    echo "   正在运行种子修补工具..."
-    
-    # Call the compiled Go tool / 调用编译好的 Go 工具
-    # Args: <WorldName> <SaveDir> <TargetSeed>
     /app/scripts/valheim_seed "$SERVER_WORLD" "$SERVER_SAVE_DIR" "$SERVER_SEED"
     
-    EXIT_CODE=$?
-    if [ $EXIT_CODE -ne 0 ]; then
-        echo "⚠️  Patcher warning: Tool exited with code $EXIT_CODE"
-        echo "   补丁工具警告：工具退出代码 $EXIT_CODE"
-    fi
 else
     echo "ℹ️  No SERVER_SEED set. Skipping patcher."
-    echo "   未设置 SERVER_SEED。跳过修补工具。"
 fi
 # ==============================================================================
 
-echo "🚀 Executing Valheim Server binary..."
-echo "   正在执行 Valheim 服务器程序..."
-
-# Start Valheim server (foreground) / 启动 Valheim 服务器（前台运行）
+echo "🚀 Executing Valheim Server..."
 exec /valheim/valheim_server.x86_64 "${SERVER_ARGS[@]}"
-

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 )
 
+// read7BitEncodedInt 读取 C# 变长整数
 func read7BitEncodedInt(r *bytes.Reader) (int, error) {
 	count := 0
 	shift := 0
@@ -26,6 +27,7 @@ func read7BitEncodedInt(r *bytes.Reader) (int, error) {
 	return count, nil
 }
 
+// write7BitEncodedInt 写入 C# 变长整数
 func write7BitEncodedInt(w *bytes.Buffer, value int) {
 	v := uint32(value)
 	for v >= 0x80 {
@@ -35,15 +37,13 @@ func write7BitEncodedInt(w *bytes.Buffer, value int) {
 	w.WriteByte(byte(v))
 }
 
-// ✅ Valheim 专用的 Stable Hash 算法
+// ✅ Valheim 专用 Stable Hash 算法
 func getValheimStableHashCode(s string) int32 {
 	h1 := int32(5381)
 	h2 := int32(5381)
-
 	for i := 0; i < len(s); i++ {
 		c := int32(s[i])
 		if i%2 == 0 {
-			// (h1 << 5) + h1 相当于 h1 * 33
 			h1 = ((h1 << 5) + h1) ^ c
 		} else {
 			h2 = ((h2 << 5) + h2) ^ c
@@ -54,7 +54,7 @@ func getValheimStableHashCode(s string) int32 {
 
 func main() {
 	if len(os.Args) < 4 {
-		fmt.Println("Usage: patcher <world_name> <save_dir> <target_seed>")
+		// 参数不足时静默退出或打印用法
 		os.Exit(1)
 	}
 
@@ -62,125 +62,107 @@ func main() {
 	saveDir := os.Args[2]
 	targetSeed := os.Args[3]
 
-	fwlPath := filepath.Join(saveDir, "worlds_local", worldName+".fwl")
-	dbPath := filepath.Join(saveDir, "worlds_local", worldName+".db")
+	// 确保存档目录存在
+	localSavesPath := filepath.Join(saveDir, "worlds_local")
+	fwlPath := filepath.Join(localSavesPath, worldName+".fwl")
+	dbPath := filepath.Join(localSavesPath, worldName+".db")
 
+	// 1. 【安全策略】如果文件不存在，什么都不做
+	// 让服务器自己启动并生成一个标准的、带有合法 UID 的存档
 	if _, err := os.Stat(fwlPath); os.IsNotExist(err) {
-		fmt.Printf("[Patcher] File not found: %s. Skipping.\n", fwlPath)
+		fmt.Printf("[Patcher] ℹ️  FWL file not found. Skipping (Server will generate a valid one).\n")
 		return
 	}
 
+	// 2. 读取现有文件
 	data, err := os.ReadFile(fwlPath)
 	if err != nil {
-		panic(err)
+		fmt.Printf("[Patcher] ❌ Error reading file: %v\n", err)
+		return
 	}
 	reader := bytes.NewReader(data)
 
-	// 1. Version
+	// --- 解析文件头 ---
 	var version int32
-	binary.Read(reader, binary.LittleEndian, &version)
+	binary.Read(reader, binary.LittleEndian, &version) // Version
+	reader.Seek(4, io.SeekCurrent)                    // Padding/Size
 
-	// 2. Padding (Skip 4 bytes, based on your previous logs)
-	reader.Seek(4, io.SeekCurrent)
-
-	// 3. World Name
+	// 读取世界名
 	nameLen, _ := read7BitEncodedInt(reader)
 	reader.Seek(int64(nameLen), io.SeekCurrent)
 
-	// 4. Current Seed String
-	// 记录种子字符串之前的头部数据，用于后续重写
+	// 记录 Header 结束位置（用于后续拼接）
 	headerSize := len(data) - reader.Len()
-	
+
+	// 读取【现有种子】
 	oldSeedLen, _ := read7BitEncodedInt(reader)
 	oldSeedBytes := make([]byte, oldSeedLen)
 	reader.Read(oldSeedBytes)
 	currentSeed := string(oldSeedBytes)
 
-	fmt.Printf("[Patcher] Found Current Seed: [%s]\n", currentSeed)
+	// 3. 【比对策略】如果种子一样，直接退出，不要折腾 DB 文件
+	if currentSeed == targetSeed {
+		fmt.Printf("[Patcher] ✅ Seed matches (%s). No action needed.\n", currentSeed)
+		return
+	}
 
-	// ========================================================
-	// 🧠 智能定位 Hash 逻辑
-	// 不假设 Hash 在哪里，而是根据旧种子算出来的 Hash 去“寻找”它
-	// ========================================================
-	
-	// 1. 计算旧种子的预期 Hash
+	fmt.Printf("[Patcher] 🔧 Seed mismatch! Current: [%s] -> Target: [%s]. Patching...\n", currentSeed, targetSeed)
+
+	// --- 智能定位 Hash ---
+	// 计算旧种子原本的 Hash，用于在文件中定位它
 	expectedOldHash := getValheimStableHashCode(currentSeed)
-	fmt.Printf("[Patcher] Expected Old Hash: %d (Scanning to find this...)\n", expectedOldHash)
-
-	// 2. 向后扫描寻找这个 Hash
+	
+	// 向后扫描寻找 Hash (保留 UID 的关键步骤)
 	var gapData []byte
 	foundHash := false
-	
-	// 最多向后找 128 字节 (足够容纳 UID 和其他可能的 padding)
 	for i := 0; i < 128; i++ {
-		// 记录当前位置
 		currentPos, _ := reader.Seek(0, io.SeekCurrent)
-		
-		// 尝试读 4 字节
 		var candidateHash int32
 		err := binary.Read(reader, binary.LittleEndian, &candidateHash)
-		
-		// 如果读到了末尾，停止
-		if err != nil {
-			break
-		}
+		if err != nil { break }
 
-		// 检查是否匹配
 		if candidateHash == expectedOldHash {
 			foundHash = true
-			fmt.Printf("[Patcher] ✅ Found Hash at relative offset +%d bytes!\n", i)
 			break
 		}
-
-		// 如果不匹配，回退 3 个字节 (前进 1 个字节继续扫)
-		// 并把这 1 个字节加入到 gapData
+		
+		// 如果不是 Hash，说明是种子和 Hash 之间的 padding（极少见但可能存在）
 		reader.Seek(currentPos, io.SeekStart)
 		b, _ := reader.ReadByte()
 		gapData = append(gapData, b)
 	}
 
 	if !foundHash {
-		fmt.Println("[Patcher] ❌ FATAL: Could not locate old Hash in file! File structure unknown.")
-		// 这种情况下最好不要强行修改，以免坏档
+		fmt.Println("[Patcher] ❌ FATAL: Could not locate old Hash. File structure unknown. Aborting.")
 		return 
 	}
 
-	// 此时 reader 正好停在 Old Hash 之后
+	// Hash 之后的所有数据（包含 UID、GenOptions 等）全部原样保留
 	restData, _ := io.ReadAll(reader)
 
-	// ========================================================
-	// 重组文件
-	// ========================================================
+	// --- 4. 重组文件 (手术式修改) ---
 	newBuf := new(bytes.Buffer)
-
-	// A. Header (Version + Name)
-	newBuf.Write(data[:headerSize])
-
-	// B. New Seed String
+	newBuf.Write(data[:headerSize])                 // A. 原样保留头部
 	write7BitEncodedInt(newBuf, len(targetSeed))
-	newBuf.WriteString(targetSeed)
-
-	// C. Gap Data (UID/Padding, preserved exactly as is)
+	newBuf.WriteString(targetSeed)                  // B. 写入新种子字符串
 	if len(gapData) > 0 {
-		newBuf.Write(gapData)
-		fmt.Printf("[Patcher] Preserving %d bytes of gap data (UID?)\n", len(gapData))
+		newBuf.Write(gapData)                       // C. 保留中间可能的 Gap
 	}
-
-	// D. New Hash
-	newHash := getValheimStableHashCode(targetSeed)
+	newHash := getValheimStableHashCode(targetSeed) // D. 计算并写入新 Hash
 	binary.Write(newBuf, binary.LittleEndian, newHash)
-	fmt.Printf("[Patcher] Writing New Hash: %d\n", newHash)
+	newBuf.Write(restData)                          // E. 原样保留尾部 (UID 在这里面)
 
-	// E. Rest of file
-	newBuf.Write(restData)
+	// 写入新的 .fwl
+	err = os.WriteFile(fwlPath, newBuf.Bytes(), 0644)
+	if err != nil {
+		fmt.Printf("[Patcher] ❌ Failed to write FWL: %v\n", err)
+		return
+	}
+	fmt.Println("[Patcher] ✅ FWL metadata updated.")
 
-	// Save
-	os.WriteFile(fwlPath, newBuf.Bytes(), 0644)
-	fmt.Println("[Patcher] FWL patched successfully.")
-
-	// Delete DB
+	// 5. 【删档策略】删除 .db 文件，强制游戏根据新种子重新生成地形
 	if _, err := os.Stat(dbPath); err == nil {
 		os.Remove(dbPath)
-		fmt.Println("[Patcher] ♻️  DB Deleted. Server will regenerate correct map.")
+		fmt.Printf("[Patcher] ♻️  Deleted %s to force world regeneration.\n", filepath.Base(dbPath))
 	}
 }
