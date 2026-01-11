@@ -76,41 +76,17 @@ export LD_LIBRARY_PATH=/valheim/linux64:$LD_LIBRARY_PATH
 export SteamAppId=892970
 
 # ==============================================================================
-# Auto-Patcher Logic (自动补丁逻辑)
+# Auto-Patcher Logic
 # ==============================================================================
 if [ -n "$SERVER_SEED" ]; then
-    FWL_PATH="${SERVER_SAVE_DIR}/worlds_local/${SERVER_WORLD}.fwl"
-
-    # [场景 A: 首次运行] 文件不存在 -> 启动临时进程生成文件 -> Kill -> 后面改种子
-    if [ ! -f "$FWL_PATH" ]; then
-        echo "🌱 First run detected. Initializing world structure..."
-        
-        # 后台启动，生成 .fwl
-        /valheim/valheim_server.x86_64 "${SERVER_ARGS[@]}" > /dev/null 2>&1 &
-        TEMP_PID=$!
-        
-        echo "⏳ Waiting for .fwl metadata..."
-        count=0
-        while [ ! -f "$FWL_PATH" ] && [ $count -lt 60 ]; do
-            sleep 1; ((count++))
-        done
-
-        # 拿到文件后，立刻杀掉临时进程
-        echo "🛑 Metadata created. Stopping initialization..."
-        kill -SIGINT "$TEMP_PID"
-        wait "$TEMP_PID" || true
-        
-        # 删掉生成的随机地图 DB (后面 Patcher 也会删，这里双重保险)
-        rm -f "${SERVER_SAVE_DIR}/worlds_local/${SERVER_WORLD}.db"
-    fi
-
-    # [场景 B: 日常运行] 文件已存在 -> 运行 Patcher
-    # Patcher 内部逻辑：如果种子一致 -> 直接退出；不一致 -> 修改并删 DB
-    echo "⚙️  Running Valheim Seed Patcher..."
-    /app/scripts/valheim_seed "$SERVER_WORLD" "$SERVER_SAVE_DIR" "$SERVER_SEED"
+    # 只要种子不为空，就无脑运行工具。
+    # 工具内部会自己判断：
+    # 1. 没文件？ -> 退出，让游戏随机生成。
+    # 2. 有文件且种子一样？ -> 退出，正常启动。
+    # 3. 有文件且种子不一样？ -> 改文件，删DB，重启生效。
     
-else
-    echo "ℹ️  No SERVER_SEED set. Skipping patcher."
+    echo "⚙️  Checking World Seed..."
+    /app/scripts/valheim_seed "$SERVER_WORLD" "$SERVER_SAVE_DIR" "$SERVER_SEED"
 fi
 # ==============================================================================
 
