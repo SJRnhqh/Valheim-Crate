@@ -1,12 +1,12 @@
 # Valheim-Crate
 
-<div align="center">
-  <img src="image/Valheim-Crate.png" alt="Valheim-Crate" width="400">
-</div>
+![Valheim-Crate Logo](image/Valheim-Crate.png)
 
-🐳 **基于 Docker 的 Valheim 专用服务器** — 零配置，在 Linux 上运行。
+> 🐳 **基于 Docker 的 Valheim 专用服务器** — 零配置，在 Linux 上运行。
 
-[English Documentation](README.md)
+[**English Documentation**](README.md)
+
+---
 
 ## 功能特性
 
@@ -63,8 +63,8 @@ nano compose.yml  # 设置 SERVER_NAME 和 SERVER_PASSWORD
 
 ```yaml
 environment:
-  SERVER_NAME: "Your Server Name"
-  SERVER_PASSWORD: "YourPassword"
+  SERVER_SAVE_DIR: "/valheim/saves"
+  SERVER_LOGFILE: "/valheim/log.txt"
 ```
 
 ### 基础
@@ -76,8 +76,10 @@ environment:
   SERVER_PUBLIC: 1                # 1=公开，0=私有
   SERVER_SAVE_DIR: "/valheim/saves"
   SERVER_LOGFILE: "/valheim/log.txt"
-  SERVER_SEED: "your-seed"        # 可选，不设置则随机
+  SERVER_SEED: "your-seed"        #  可选。⚠️ 注意：首次运行后需要执行 './server.sh restart' 才能生效！
 ```
+
+⚠️ 关于自定义种子： 服务器在首次启动时会生成一个随机世界。如果您设置了 SERVER_SEED，内置补丁工具会检测到不匹配。您必须在初始化完成后执行一次 ./server.sh restart，工具将自动应用您的种子并重新生成世界。
 
 ### 世界修改器
 
@@ -149,3 +151,18 @@ docker compose exec valheim cat /valheim/log.txt  # 服务器日志（如果配�
     ├── ⚙️  setup.sh               # 安装/更新服务器文件
     └── 🚀 start.sh                # 启动 Valheim 服务器
 ```
+
+## 🗺️ 开发路线图
+
+### 第一阶段：工程化与发布 🛠️
+* [ ] **CI/CD 集成**：使用 GitHub Actions 实现自动化测试（ShellCheck, Go Test）以及 Docker 镜像的自动构建。
+* [ ] **发布 Docker 镜像**：将镜像发布至 Docker Hub 和 GHCR，支持用户直接使用 `docker pull` 拉取。
+* [ ] **单元测试**：为二进制补丁工具 (`seed.go`) 添加完善的 Go 单元测试，并为 Shell 脚本添加 BATS 测试。
+
+### 第二阶段：功能增强 ✨
+* [ ] **云端备份**：支持将游戏存档自动同步上传至云存储（S3、MinIO、WebDAV）。
+* [ ] **Webhook 通知**：集成 Discord、Telegram 和钉钉的 Webhook，实现服务器状态变更（启动/停止/IP变化）的实时通知。
+* [ ] **日志可视化**：优化启动日志的输出格式，提供更直观的进度展示。
+
+### 第三阶段：极客探索 🧪
+* [ ] **原生 FWL 生成器**：深入研究 Valheim 文件结构，尝试使用 Go 直接生成 `.fwl` 世界文件，彻底摆脱对游戏进程的依赖（实现真正的无需重启、即刻生效）。

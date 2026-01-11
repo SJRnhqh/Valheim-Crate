@@ -1,12 +1,12 @@
 # Valheim-Crate
 
-<div align="center">
-  <img src="image/Valheim-Crate.png" alt="Valheim-Crate" width="400">
-</div>
+![Valheim-Crate Logo](image/Valheim-Crate.png)
 
-🐳 **Valheim dedicated server in Docker** — Zero setup, runs on Linux.
+> 🐳 **Valheim dedicated server in Docker** — Zero setup, runs on Linux.
 
-[中文文档 / Chinese Documentation](README.zh.md)
+[**中文文档 / Chinese Documentation**](README.zh.md)
+
+---
 
 ## Features
 
@@ -63,8 +63,8 @@ Edit `compose.yml` (copied from `compose.example.yml`). All settings via environ
 
 ```yaml
 environment:
-  SERVER_NAME: "Your Server Name"
-  SERVER_PASSWORD: "YourPassword"
+  SERVER_SAVE_DIR: "/valheim/saves"
+  SERVER_LOGFILE: "/valheim/log.txt"
 ```
 
 ### Basic
@@ -76,8 +76,10 @@ environment:
   SERVER_PUBLIC: 1                # 1=public, 0=private
   SERVER_SAVE_DIR: "/valheim/saves"
   SERVER_LOGFILE: "/valheim/log.txt"
-  SERVER_SEED: "your-seed"        # Optional, random if not set
+  SERVER_SEED: "your-seed"        # Optional. ⚠️ NOTE: Requires './server.sh restart' after first run to apply!
 ```
+
+⚠️ About Custom Seeds: The server will generate a random world on the very first startup. If you set a SERVER_SEED, the built-in patcher will detect the mismatch. You MUST run ./server.sh restart once after the initial setup to let the patcher apply your seed and regenerate the world.
 
 ### World Modifiers
 
@@ -149,3 +151,18 @@ docker compose exec valheim cat /valheim/log.txt  # Server logs (if configured)
     ├── ⚙️  setup.sh               # Install/update server files
     └── 🚀 start.sh                # Start Valheim server
 ```
+
+## 🗺️ Roadmap
+
+### Phase 1: Engineering & Release 🛠️
+* [ ] **CI/CD Integration**: Implement GitHub Actions for automated testing (ShellCheck, Go Test) and Docker image building.
+* [ ] **Docker Registry**: Publish images to Docker Hub and GHCR (GitHub Container Registry) to support `docker pull` directly.
+* [ ] **Unit Tests**: Add comprehensive Go tests for the binary patcher (`seed.go`) and BATS tests for shell scripts.
+
+### Phase 2: Feature Enhancements ✨
+* [ ] **Cloud Backup**: Add support for auto-syncing save files to cloud storage (S3, MinIO, WebDAV).
+* [ ] **Webhook Notifications**: Integrate webhooks for Discord, Telegram, and DingTalk to notify server status changes (Start/Stop/IP).
+* [ ] **Visual Logs**: Improve the startup log output with better visualization and progress indicators.
+
+### Phase 3: Experimental 🧪
+* [ ] **Native FWL Generator**: Research Valheim's file structure to generate `.fwl` world files directly in Go, removing the dependency on the game process for world generation (True instant setup without restart).
