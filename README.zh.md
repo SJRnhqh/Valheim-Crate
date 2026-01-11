@@ -31,6 +31,7 @@ git clone <repository-url>
 cd Valheim-Crate
 cp compose.example.yml compose.yml
 nano compose.yml  # 设置 SERVER_NAME 和 SERVER_PASSWORD
+```
 
 # 1. 安装环境并下载游戏（不会自动启动）
 ./server.sh install
