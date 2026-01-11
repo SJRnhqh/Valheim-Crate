@@ -1,5 +1,5 @@
-# Local docker-compose configuration (may contain sensitive data)
-docker-compose.yml
+# Local compose configuration (may contain sensitive data)
+compose.yml
 
 # Editor directories and files
 .vscode/

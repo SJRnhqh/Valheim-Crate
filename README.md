@@ -29,8 +29,8 @@
 ```bash
 git clone <repository-url>
 cd Valheim-Crate
-cp docker-compose.example.yml docker-compose.yml
-nano docker-compose.yml  # Set SERVER_NAME and SERVER_PASSWORD
+cp compose.example.yml compose.yml
+nano compose.yml  # Set SERVER_NAME and SERVER_PASSWORD
 ./server.sh install
 ```
 
@@ -50,9 +50,9 @@ nano docker-compose.yml  # Set SERVER_NAME and SERVER_PASSWORD
 
 ## Configuration
 
-Edit `docker-compose.yml` (copied from `docker-compose.example.yml`). All settings via environment variables.
+Edit `compose.yml` (copied from `compose.example.yml`). All settings via environment variables.
 
-**Note:** `docker-compose.yml` is gitignored to protect your passwords.
+**Note:** `compose.yml` is gitignored to protect your passwords.
 
 ### Required
 
@@ -66,7 +66,7 @@ environment:
 
 ```yaml
 environment:
-  SERVER_PORT: 2456              # Default: 2456
+  SERVER_PORT: 2456               # Default: 2456
   SERVER_WORLD: "Dedicated"       # Default: Dedicated
   SERVER_PUBLIC: 1                # 1=public, 0=private
   SERVER_SAVE_DIR: "/valheim/saves"
@@ -125,24 +125,24 @@ SERVER_INSTANCEID: "1"       # Unique ID for multiple servers
 ## Logs
 
 ```bash
-docker-compose logs -f valheim                    # Container logs
-docker-compose exec valheim cat /valheim/log.txt  # Server logs (if configured)
+docker compose logs -f valheim                    # Container logs
+docker compose exec valheim cat /valheim/log.txt  # Server logs (if configured)
 ```
 
 ## Troubleshooting
 
 - **Server won't start:** Check `./server.sh status` and verify `SERVER_NAME`/`SERVER_PASSWORD` are set
 - **Server files not found:** Run `./server.sh install`
-- **Port conflict:** Change ports in `docker-compose.yml`
+- **Port conflict:** Change ports in `compose.yml`
 - **Update failed:** Run `./server.sh start && ./server.sh update`
 
 ## Project Structure
 
 ```
 📦 Valheim-Crate/
-├── 🐳 Dockerfile                 # Docker image definition
-├── 📝 docker-compose.example.yml  # Example configuration (copy to docker-compose.yml)
-├── 🚫 docker-compose.yml          # Your local config (gitignored)
+├── 🐳 Dockerfile                  # Docker image definition
+├── 📝 compose.example.yml         # Example configuration (copy to compose.yml)
+├── 🚫 compose.yml                 # Your local config (gitignored)
 ├── 🎮 server.sh                   # Main management script
 ├── 📚 README.md                   # English documentation
 ├── 📚 README.zh.md                # Chinese documentation
