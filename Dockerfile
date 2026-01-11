@@ -25,7 +25,7 @@ WORKDIR /valheim
 
 # Install required dependencies for Valheim server / 安装 Valheim 服务器所需的依赖
 RUN apt-get update && \
-    apt-get install -y libpulse-dev libatomic1 libc6 && \
+    apt-get install -y libpulse-dev libatomic1 libc6 procps && \
     rm -rf /var/lib/apt/lists/*
 
 # Setup scripts directory / 设置脚本目录
