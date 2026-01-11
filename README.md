@@ -39,11 +39,17 @@ cp compose.example.yml compose.yml
 nano compose.yml  # Set SERVER_NAME and SERVER_PASSWORD
 ```
 
-# 1. Install environment & download game
-./server.sh install
+### 1. Install environment & download game
 
-# 2. Start the server
+```bash
+./server.sh install
+```
+
+### 2. Start the server
+
+```bash
 ./server.sh start
+```
 
 ## Commands
 
