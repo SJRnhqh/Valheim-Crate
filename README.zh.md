@@ -29,30 +29,35 @@
 ```bash
 git clone <repository-url>
 cd Valheim-Crate
-cp docker-compose.example.yml docker-compose.yml
-nano docker-compose.yml  # 设置 SERVER_NAME 和 SERVER_PASSWORD
-./server.sh install
+cp compose.example.yml compose.yml
+nano compose.yml  # 设置 SERVER_NAME 和 SERVER_PASSWORD
 ```
+
+# 1. 安装环境并下载游戏（不会自动启动）
+./server.sh install
+
+# 2. 启动服务器
+./server.sh start
 
 ## 命令
 
 | 命令 | 说明 |
 |-----|------|
-| `install` | 首次安装（构建、创建、安装、启动） |
-| `update` | 更新服务器文件（不重建） |
-| `start` | 启动服务器（如需要会自动安装） |
-| `stop` | 停止服务器 |
-| `restart` | 重启服务器 |
-| `status` | 显示服务器状态 |
-| `remove` | 删除容器/镜像（数据保留） |
+| `install` | 首次安装：构建环境并下载游戏（**不自动启动**） |
+| `update` | 安全更新：停止服务器 -> 更新文件 -> 准备就绪 |
+| `start` | 启动服务器（需先运行 `install`） |
+| `stop` | 安全停止（等待世界保存） |
+| `restart` | 验证配置 -> 停止 -> 启动 |
+| `status` | 显示资源占用、配置和端口状态 |
+| `remove` | 卸载容器/镜像（数据保留） |
 
-**默认：** `./server.sh`（等同于 `start`）
+**默认：** `./server.sh`（显示帮助菜单）
 
 ## 配置
 
-编辑 `docker-compose.yml`（从 `docker-compose.example.yml` 复制）。所有设置通过环境变量完成。
+编辑 `compose.yml`（从 `compose.example.yml` 复制）。所有设置通过环境变量完成。
 
-**注意：** `docker-compose.yml` 已被 gitignore 忽略，以保护您的密码。
+**注意：** `compose.yml` 已被 gitignore 忽略，以保护您的密码。
 
 ### 必填
 
@@ -66,7 +71,7 @@ environment:
 
 ```yaml
 environment:
-  SERVER_PORT: 2456              # 默认：2456
+  SERVER_PORT: 2456               # 默认：2456
   SERVER_WORLD: "Dedicated"       # 默认：Dedicated
   SERVER_PUBLIC: 1                # 1=公开，0=私有
   SERVER_SAVE_DIR: "/valheim/saves"
@@ -125,24 +130,17 @@ SERVER_INSTANCEID: "1"       # 多个服务器的唯一 ID
 ## 日志
 
 ```bash
-docker-compose logs -f valheim                    # 容器日志
-docker-compose exec valheim cat /valheim/log.txt  # 服务器日志（如果配置了）
+docker compose logs -f valheim                    # 容器日志
+docker compose exec valheim cat /valheim/log.txt  # 服务器日志（如果配置了）
 ```
-
-## 故障排除
-
-- **服务器无法启动：** 检查 `./server.sh status` 并验证 `SERVER_NAME`/`SERVER_PASSWORD` 已设置
-- **服务器文件未找到：** 运行 `./server.sh install`
-- **端口冲突：** 在 `docker-compose.yml` 中更改端口
-- **更新失败：** 运行 `./server.sh start && ./server.sh update`
 
 ## 项目结构
 
 ```
 📦 Valheim-Crate/
-├── 🐳 Dockerfile                 # Docker 镜像定义
-├── 📝 docker-compose.example.yml  # 示例配置文件（复制为 docker-compose.yml）
-├── 🚫 docker-compose.yml          # 您的本地配置（已 gitignore）
+├── 🐳 Dockerfile                  # Docker 镜像定义
+├── 📝 compose.example.yml         # 示例配置文件（复制为 compose.yml）
+├── 🚫 compose.yml                 # 您的本地配置（已 gitignore）
 ├── 🎮 server.sh                   # 主管理脚本
 ├── 📚 README.md                   # 英文文档
 ├── 📚 README.zh.md                # 中文文档
@@ -151,5 +149,3 @@ docker-compose exec valheim cat /valheim/log.txt  # 服务器日志（如果配�
     ├── ⚙️  setup.sh               # 安装/更新服务器文件
     └── 🚀 start.sh                # 启动 Valheim 服务器
 ```
-
-本项目按原样提供，用于运行 Valheim 专用服务器。
