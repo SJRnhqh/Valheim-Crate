@@ -41,7 +41,7 @@ COPY --from=builder /build/valheim_seed /app/scripts/valheim_seed
 RUN chmod +x /app/scripts/*.sh /app/scripts/valheim_seed
 
 # Expose Valheim server ports (UDP) / 暴露 Valheim 服务器端口（UDP）
-EXPOSE 2456-2458/udp
+EXPOSE 2456-2457/udp
 
 # Keep container running / 保持容器运行
 CMD ["/bin/bash"]
