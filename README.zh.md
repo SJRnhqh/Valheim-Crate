@@ -31,22 +31,26 @@ git clone <repository-url>
 cd Valheim-Crate
 cp compose.example.yml compose.yml
 nano compose.yml  # 设置 SERVER_NAME 和 SERVER_PASSWORD
+
+# 1. 安装环境并下载游戏（不会自动启动）
 ./server.sh install
-```
+
+# 2. 启动服务器
+./server.sh start
 
 ## 命令
 
 | 命令 | 说明 |
 |-----|------|
-| `install` | 首次安装（构建、创建、安装、更新环境变量） |
-| `update` | 更新服务器文件（不重建） |
-| `start` | 启动服务器（如需要会自动安装） |
-| `stop` | 停止服务器 |
-| `restart` | 重启服务器 |
-| `status` | 显示服务器状态 |
-| `remove` | 删除容器/镜像（数据保留） |
+| `install` | 首次安装：构建环境并下载游戏（**不自动启动**） |
+| `update` | 安全更新：停止服务器 -> 更新文件 -> 准备就绪 |
+| `start` | 启动服务器（需先运行 `install`） |
+| `stop` | 安全停止（等待世界保存） |
+| `restart` | 验证配置 -> 停止 -> 启动 |
+| `status` | 显示资源占用、配置和端口状态 |
+| `remove` | 卸载容器/镜像（数据保留） |
 
-**默认：** `./server.sh`（等同于 `start`）
+**默认：** `./server.sh`（显示帮助菜单）
 
 ## 配置
 
@@ -128,13 +132,6 @@ SERVER_INSTANCEID: "1"       # 多个服务器的唯一 ID
 docker compose logs -f valheim                    # 容器日志
 docker compose exec valheim cat /valheim/log.txt  # 服务器日志（如果配置了）
 ```
-
-## 故障排除
-
-- **服务器无法启动：** 检查 `./server.sh status` 并验证 `SERVER_NAME`/`SERVER_PASSWORD` 已设置
-- **服务器文件未找到：** 运行 `./server.sh install`
-- **端口冲突：** 在 `compose.yml` 中更改端口
-- **更新失败：** 运行 `./server.sh start && ./server.sh update`
 
 ## 项目结构
 

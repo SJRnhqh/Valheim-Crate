@@ -31,22 +31,26 @@ git clone <repository-url>
 cd Valheim-Crate
 cp compose.example.yml compose.yml
 nano compose.yml  # Set SERVER_NAME and SERVER_PASSWORD
+
+# 1. Install environment & download game
 ./server.sh install
-```
+
+# 2. Start the server
+./server.sh start
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `install` | First-time installation (build, create, install, update environment) |
-| `update` | Update server files (no rebuild) |
-| `start` | Start server (auto-install if needed) |
-| `stop` | Stop server |
-| `restart` | Restart server |
-| `status` | Show server status |
-| `remove` | Remove container/image (data preserved) |
+| `install` | Build environment & download game files (**No auto-start**) |
+| `update` | Safe update: Stop -> Update files -> Ready to start |
+| `start` | Start server (Requires `install` first) |
+| `stop` | Safely stop server (Waits for world save) |
+| `restart` | Validate config -> Stop -> Start |
+| `status` | Show resource usage, config, and port status |
+| `remove` | Remove container/image (Data preserved) |
 
-**Default:** `./server.sh` (same as `start`)
+**Default:** `./server.sh` (Shows help menu)
 
 ## Configuration
 
@@ -128,13 +132,6 @@ SERVER_INSTANCEID: "1"       # Unique ID for multiple servers
 docker compose logs -f valheim                    # Container logs
 docker compose exec valheim cat /valheim/log.txt  # Server logs (if configured)
 ```
-
-## Troubleshooting
-
-- **Server won't start:** Check `./server.sh status` and verify `SERVER_NAME`/`SERVER_PASSWORD` are set
-- **Server files not found:** Run `./server.sh install`
-- **Port conflict:** Change ports in `compose.yml`
-- **Update failed:** Run `./server.sh start && ./server.sh update`
 
 ## Project Structure
 

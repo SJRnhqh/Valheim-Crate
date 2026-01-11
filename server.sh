@@ -14,8 +14,8 @@
 #                        首次安装（构建镜像、创建容器、安装服务器、更新环境变量）
 #   update               - Update server files only (no image rebuild, requires install first)
 #                        仅更新服务器文件（不重建镜像，需要先安装）
-#   start                - Start the server (container level, auto-install if container doesn't exist)
-#                        启动服务器（容器层面，如果容器不存在会自动安装）
+#   start                - Start the server (container level)
+#                        启动服务器（容器层面）
 #   stop                 - Stop the server (container level, container remains)
 #                        停止服务器（容器层面，容器保留）
 #   restart              - Restart the server (container level, stop then start)
@@ -188,45 +188,55 @@ update_server() {
 # Function: start_server
 # 功能: 启动服务器
 # Description: Start Valheim server process
-#              - Auto-installs if container doesn't exist
-#              - Starts container if stopped
-#              - Does NOT update server files (use 'update' for that)
+#              - Strict Mode: Requires 'install' to be run first
+#              - Starts container if stopped, then starts game process
 # 描述: 启动 Valheim 服务器进程
-#        - 如果容器不存在会自动安装
-#        - 如果容器已停止会自动启动
-#        - 不会更新服务器文件（使用 'update' 命令更新）
+#        - 严格模式：要求必须先运行 'install'
+#        - 如果容器已停止会自动启动容器，然后启动游戏进程
 # ============================================================================
 start_server() {
     echo -e "${GREEN}🚀 Valheim-Crate: Starting server...${NC}"
     echo -e "${GREEN}   Valheim-Crate: 正在启动服务器...${NC}"
     echo ""
 
-    # Check if container exists / 检查容器是否存在
-    if ! docker compose ps | grep -q "valheim-server"; then
-        echo -e "${YELLOW}⚠️  Container not found, installing server first...${NC}"
-        echo -e "${YELLOW}   未找到容器，先安装服务器...${NC}"
-        install_server
-        echo ""
+    # 1. Strict Check: Is the server installed? (Container exists)
+    # 1. 严格检查：服务器是否已安装？（容器是否存在）
+    # Use 'ps -a' to check for stopped containers too / 使用 'ps -a' 检查包括已停止的容器
+    if [ -z "$(docker compose ps -a -q valheim 2>/dev/null)" ]; then
+        echo -e "${RED}❌ Server environment not found.${NC}"
+        echo -e "${RED}   未找到服务器环境。${NC}"
+        echo -e "${YELLOW}   This is the first run. Please install first:${NC}"
+        echo -e "${YELLOW}   这是首次运行。请先执行安装:${NC}"
+        echo -e "${GREEN}   ./server.sh install${NC}"
+        exit 1
     fi
 
-    # Start container if not running / 如果容器未运行则启动
+    # 2. Ensure container is running (Infrastructure level)
+    # 2. 确保容器正在运行（基础设施层面）
+    # If container exists but is stopped, start it / 如果容器存在但已停止，启动它
     if ! docker compose ps valheim | grep -q "Up"; then
-        echo -e "${YELLOW}📦 Starting container...${NC}"
-        echo -e "${YELLOW}   正在启动容器...${NC}"
+        echo -e "${YELLOW}📦 Starting container environment...${NC}"
+        echo -e "${YELLOW}   正在启动容器环境...${NC}"
         docker compose up -d valheim
         sleep 3
     fi
 
-    # Check if server files exist / 检查服务器文件是否存在
+    # 3. Check for server binary (Application level)
+    # 3. 检查服务器二进制文件（应用层面）
     if ! docker compose exec -T valheim test -f /valheim/valheim_server.x86_64 2>/dev/null; then
-        echo -e "${RED}❌ Server files not found. Please run './server.sh install' first${NC}"
-        echo -e "${RED}   未找到服务器文件。请先运行 './server.sh install'${NC}"
+        echo -e "${RED}❌ Valheim server files are missing inside the container.${NC}"
+        echo -e "${RED}   容器内缺少 Valheim 服务器文件。${NC}"
+        echo -e "${YELLOW}   The environment exists but the game is not installed.${NC}"
+        echo -e "${YELLOW}   环境存在但游戏未安装。${NC}"
+        echo -e "${YELLOW}   Please run update to fix: ./server.sh update${NC}"
+        echo -e "${YELLOW}   请运行更新以修复: ./server.sh update${NC}"
         exit 1
     fi
 
-    # Start server / 启动服务器
-    echo -e "${YELLOW}🎮 Starting Valheim server...${NC}"
-    echo -e "${YELLOW}   正在启动 Valheim 服务器...${NC}"
+    # 4. Start the game process
+    # 4. 启动游戏进程
+    echo -e "${YELLOW}🎮 Starting Valheim server process...${NC}"
+    echo -e "${YELLOW}   正在启动 Valheim 服务器进程...${NC}"
     
     # Check if server is already running / 检查服务器是否已在运行
     if docker compose exec -T valheim pgrep -f "valheim_server.x86_64" > /dev/null 2>&1; then
@@ -338,51 +348,109 @@ start_server() {
 # Function: stop_server
 # 功能: 停止服务器
 # Description: Stop Valheim server process and container
-#              Container is preserved (not deleted) for faster restart
+#              - Uses extended timeout to ensure world data is saved correctly
+#              - Checks container status accurately
 # 描述: 停止 Valheim 服务器进程和容器
-#       容器会保留（不删除）以便快速重启
+#       - 使用延长的超时时间以确保世界数据正确保存
+#       - 准确检查容器状态
 # ============================================================================
 stop_server() {
     echo -e "${YELLOW}🛑 Valheim-Crate: Stopping server...${NC}"
     echo -e "${YELLOW}   Valheim-Crate: 正在停止服务器...${NC}"
     echo ""
 
-    # Check if container is running / 检查容器是否运行
-    if ! docker compose ps | grep -q "Up"; then
-        echo -e "${YELLOW}ℹ️  Container is not running${NC}"
-        echo -e "${YELLOW}   容器未运行${NC}"
+    # 1. Check if container exists / 检查容器是否存在
+    local CONTAINER_ID
+    CONTAINER_ID=$(docker compose ps -q valheim 2>/dev/null)
+    
+    if [ -z "$CONTAINER_ID" ]; then
+        echo -e "${YELLOW}ℹ️  Server is not installed (Container not found).${NC}"
+        echo -e "${YELLOW}   服务器未安装（未找到容器）。${NC}"
         return 0
     fi
 
-    # Stop container (this will stop all processes inside, including Valheim server) / 停止容器（这会停止容器内的所有进程，包括 Valheim 服务器）
-    # Use service name to ensure only valheim service is stopped / 使用服务名确保只停止 valheim 服务
-    echo -e "${YELLOW}🛑 Stopping container...${NC}"
-    echo -e "${YELLOW}   正在停止容器...${NC}"
-    docker compose stop valheim
+    # 2. Check if actually running / 检查是否确实在运行
+    if ! docker compose ps --filter "status=running" -q valheim >/dev/null 2>&1; then
+        echo -e "${YELLOW}ℹ️  Server is already stopped.${NC}"
+        echo -e "${YELLOW}   服务器已经是停止状态。${NC}"
+        return 0
+    fi
 
-    echo -e "${GREEN}✅ Server stopped successfully${NC}"
-    echo -e "${GREEN}   服务器已成功停止${NC}"
+    # 3. Stop container with extended timeout / 带延长超时的停止容器
+    # Valheim needs time to flush world data to disk. 
+    # Default Docker timeout (10s) might kill it mid-save. 
+    # increasing to 30s is safer.
+    # Valheim 需要时间将世界数据写入磁盘。
+    # Docker 默认超时 (10秒) 可能会在保存中途杀死进程。
+    # 增加到 30秒 更安全。
+    
+    echo -e "${YELLOW}🛑 Stopping container (waiting up to 30s for world save)...${NC}"
+    echo -e "${YELLOW}   正在停止容器（最多等待 30秒 以保存世界）...${NC}"
+    
+    docker compose stop -t 30 valheim
+
+    # Final check / 最终检查
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✅ Server stopped successfully (Data saved)${NC}"
+        echo -e "${GREEN}   服务器已成功停止（数据已保存）${NC}"
+    else
+        echo -e "${RED}❌ Failed to stop server cleanly${NC}"
+        echo -e "${RED}   未能正常停止服务器${NC}"
+        exit 1
+    fi
 }
 
 # ============================================================================
 # Function: restart_server
 # 功能: 重启服务器
-# Description: Stop then start the server (no update performed)
-# 描述: 先停止再启动服务器（不执行更新）
+# Description: Stop then start the server to apply configuration changes
+#              - Validates config before stopping (Safety first)
+#              - Checks installation status
+# 描述: 先停止再启动服务器以应用配置更改
+#       - 停止前验证配置（安全第一）
+#       - 检查安装状态
 # ============================================================================
 restart_server() {
     echo -e "${BLUE}🔄 Valheim-Crate: Restarting server...${NC}"
     echo -e "${BLUE}   Valheim-Crate: 正在重启服务器...${NC}"
     echo ""
 
-    # Stop server / 停止服务器
-    stop_server
+    # 1. Pre-check: Is server installed? / 预检查：服务器是否安装？
+    # Don't bother stopping if it doesn't exist
+    if [ -z "$(docker compose ps -a -q valheim 2>/dev/null)" ]; then
+        echo -e "${RED}❌ Server not installed. Cannot restart.${NC}"
+        echo -e "${RED}   服务器未安装，无法重启。${NC}"
+        echo -e "${YELLOW}   Please run './server.sh install' first.${NC}"
+        exit 1
+    fi
+
+    # 2. Pre-check: Validate config syntax / 预检查：验证配置语法
+    # Prevent stopping a healthy server if the new config is broken
+    # 防止因为新配置有语法错误而误停了健康的服务器
+    echo -e "${YELLOW}🔍 Validating configuration file...${NC}"
+    if ! docker compose config -q; then
+        echo -e "${RED}❌ Configuration error in compose.yml${NC}"
+        echo -e "${RED}      compose.yml 中存在配置错误${NC}"
+        echo -e "${YELLOW}   Restart aborted to protect the running server.${NC}"
+        echo -e "${YELLOW}   重启已中止以保护正在运行的服务器。${NC}"
+        echo ""
+        # Print the actual error
+        docker compose config
+        exit 1
+    fi
+    echo -e "${GREEN}✅ Configuration is valid${NC}"
     echo ""
 
-    # Wait a bit / 等待一下
-    sleep 2
+    # 3. Stop server / 停止服务器
+    # Calls our improved stop_server which handles world saving safely
+    # 调用我们改进过的 stop_server，它会安全地处理世界保存
+    stop_server
+    
+    echo ""
 
-    # Start server / 启动服务器
+    # 4. Start server / 启动服务器
+    # start_server will recreate the container if config changed (up -d)
+    # start_server 会在配置发生变化时重建容器 (up -d)
     start_server
 }
 
