@@ -387,10 +387,9 @@ stop_server() {
     echo -e "${YELLOW}🛑 Stopping container (waiting up to 30s for world save)...${NC}"
     echo -e "${YELLOW}   正在停止容器（最多等待 30秒 以保存世界）...${NC}"
     
-    docker compose stop -t 30 valheim
-
-    # Final check / 最终检查
-    if [ $? -eq 0 ]; then
+    # Use direct if condition to catch errors in 'set -e' mode
+    # 在 'set -e' 模式下使用直接的 if 条件来捕获错误
+    if docker compose stop -t 30 valheim; then
         echo -e "${GREEN}✅ Server stopped successfully (Data saved)${NC}"
         echo -e "${GREEN}   服务器已成功停止（数据已保存）${NC}"
     else
